@@ -140,3 +140,22 @@ export interface GitSyncResponse {
   message: string;
   commitMessage?: string;
 }
+
+export interface TerminalInfo {
+  defaultShell: string;
+  availableShells: string[];
+  cwd: string;
+  directoryListing?: string;
+}
+
+export interface TerminalExecResponse {
+  output: string;
+  exitCode: number;
+  cwd: string;
+  shell: string;
+}
+
+export interface TerminalLine {
+  kind: 'prompt' | 'output' | 'error' | 'meta';
+  text: string;
+}

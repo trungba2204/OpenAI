@@ -9,13 +9,15 @@ import type * as Monaco from 'monaco-editor';
 import { ProjectService } from '../../../core/services/project.service';
 import { IdeAiService } from '../../../core/services/ide-ai.service';
 import { GitService } from '../../../core/services/git.service';
+import { TerminalService } from '../../../core/services/terminal.service';
 import { ChatService } from '../../../core/services/chat.service';
 import { AiModel, AiModelInfo } from '../../../core/models';
 import {
   ContextScope, FileTreeNode, GitConnection, GitRepoSuggest, GitStatus, IdeAgentResponse,
-  IdeChatMessage, IdeFileEdit, IdeSearchResult, IdeSelectionContext, InlineAction, Project
+  IdeChatMessage, IdeFileEdit, IdeSearchResult, IdeSelectionContext, InlineAction, Project,
+  TerminalLine
 } from '../../../core/models/ide';
-import { forkJoin, map, Observable, of } from 'rxjs';
+import { forkJoin, finalize, map, Observable, of } from 'rxjs';
 import { stripMarkdown } from '../../../core/utils/plain-text';
 import {
   getChangedLineNumbers,
@@ -140,7 +142,7 @@ interface VisibleTreeNode extends FileTreeNode {
         }
       </aside>
 
-      <div class="ide-main">
+      <div class="ide-main" [class.ide-main--terminal-open]="terminalOpen()">
         <div class="ide-toolbar">
           <button type="button" class="feature-btn feature-btn--sm" (click)="openPrompt('generate')" title="Generate code">✨ Generate</button>
           <button type="button" class="feature-btn feature-btn--sm" (click)="openPrompt('refactor')">🔧 Refactor</button>
@@ -160,6 +162,9 @@ interface VisibleTreeNode extends FileTreeNode {
           <span class="ide-toolbar__sep"></span>
           <button type="button" class="feature-btn feature-btn--sm" (click)="reindexProject()" [disabled]="indexing()">
             {{ indexing() ? 'Đang index...' : '📇 Index' }}
+          </button>
+          <button type="button" class="feature-btn feature-btn--sm" (click)="toggleTerminal()" [class.feature-btn--primary]="terminalOpen()">
+            ⌨️ Terminal
           </button>
           <button type="button" class="feature-btn feature-btn--sm" (click)="setRightPanel('git')">Git</button>
           <button
@@ -254,6 +259,52 @@ interface VisibleTreeNode extends FileTreeNode {
             <div class="ide-empty-editor">Chọn file từ cây thư mục bên trái</div>
           }
         </div>
+
+        @if (terminalOpen()) {
+          <div class="ide-terminal" (mousedown)="onTerminalMouseDown($event)">
+            <div class="ide-terminal__header">
+              <span class="ide-terminal__title">
+                {{ terminalShell === 'powershell' ? 'PowerShell' : 'Bash' }}
+                <small>{{ terminalCwd() }}</small>
+              </span>
+              <div class="ide-terminal__actions">
+                <select class="ide-terminal__shell" [(ngModel)]="terminalShell" (change)="onTerminalShellChange()">
+                  @for (s of terminalShells(); track s) {
+                    <option [value]="s">{{ s === 'powershell' ? 'PowerShell' : 'Bash' }}</option>
+                  }
+                </select>
+                <button type="button" class="feature-btn feature-btn--sm" (click)="refreshTerminalListing()">📂 Files</button>
+                <button type="button" class="feature-btn feature-btn--sm" (click)="runTerminalQuick('git status')">git status</button>
+                <button type="button" class="feature-btn feature-btn--sm" (click)="clearTerminal()">Clear</button>
+                <button type="button" class="feature-btn feature-btn--sm" (click)="toggleTerminal()">✕</button>
+              </div>
+            </div>
+            <div class="ide-terminal__body" #terminalOutput>
+              @for (line of terminalLines(); track $index) {
+                <div class="ide-terminal__line" [class.ide-terminal__line--prompt]="line.kind === 'prompt'"
+                  [class.ide-terminal__line--error]="line.kind === 'error'"
+                  [class.ide-terminal__line--meta]="line.kind === 'meta'">{{ line.text }}</div>
+              }
+              @if (terminalRunning()) {
+                <div class="ide-terminal__line ide-terminal__line--meta">Đang chạy...</div>
+              }
+            </div>
+            <form class="ide-terminal__input-row" (submit)="runTerminalCommand($event)">
+              <span class="ide-terminal__prompt">{{ terminalPrompt() }}</span>
+              <input
+                #terminalInputRef
+                type="text"
+                class="ide-terminal__input"
+                [(ngModel)]="terminalInput"
+                name="terminalInputField"
+                [disabled]="terminalRunning()"
+                placeholder="git status, git add ., ls, dir..."
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false" />
+            </form>
+          </div>
+        }
       </div>
 
       <aside class="ide-chat-panel">
@@ -533,6 +584,7 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private projectService = inject(ProjectService);
   private ideAiService = inject(IdeAiService);
   private gitService = inject(GitService);
+  private terminalService = inject(TerminalService);
   private chatService = inject(ChatService);
   private extensionService = inject(IdeExtensionService);
   private completionService = inject(IdeCompletionService);
@@ -558,6 +610,8 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private editorHost = viewChild<ElementRef<HTMLDivElement>>('editorHost');
   private editorWrap = viewChild<ElementRef<HTMLDivElement>>('editorWrap');
   private chatMessagesEl = viewChild<ElementRef<HTMLDivElement>>('chatMessagesHost');
+  private terminalOutputEl = viewChild<ElementRef<HTMLDivElement>>('terminalOutput');
+  private terminalInputRef = viewChild<ElementRef<HTMLInputElement>>('terminalInputRef');
   private editor: Monaco.editor.IStandaloneCodeEditor | null = null;
   private monaco: typeof Monaco | null = null;
   private contentChangeDisposable: Monaco.IDisposable | null = null;
@@ -617,6 +671,15 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   gitBranch = 'main';
   gitUsername = '';
   gitToken = '';
+  terminalOpen = signal(false);
+  terminalLines = signal<TerminalLine[]>([]);
+  terminalShells = signal<string[]>(['powershell', 'bash']);
+  terminalShell = 'powershell';
+  terminalCwd = signal('');
+  terminalRunning = signal(false);
+  terminalInput = '';
+  private terminalHistory: string[] = [];
+  private terminalHistoryIndex = -1;
   projectId = 0;
 
   ngOnInit(): void {
@@ -1847,6 +1910,169 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.selectionWidgetVisible.set(false);
     this.editor?.dispose();
     this.editor = null;
+  }
+
+  terminalPrompt(): string {
+    return this.terminalShell === 'powershell' ? 'PS> ' : '$ ';
+  }
+
+  toggleTerminal(): void {
+    this.terminalOpen.update(v => !v);
+    if (this.terminalOpen()) {
+      this.terminalLines.set([]);
+      this.terminalRunning.set(false);
+      this.loadTerminalInfo(true);
+      setTimeout(() => {
+        this.editor?.layout();
+        this.focusTerminalInput();
+      }, 80);
+    } else {
+      setTimeout(() => this.editor?.layout(), 80);
+    }
+  }
+
+  onTerminalMouseDown(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (target.closest('.ide-terminal__body') || target.closest('button') || target.closest('select')) {
+      return;
+    }
+    event.stopPropagation();
+    this.focusTerminalInput();
+  }
+
+  focusTerminalInput(): void {
+    const input = this.terminalInputRef()?.nativeElement;
+    if (input && !this.terminalRunning()) {
+      input.focus();
+    }
+  }
+
+  refreshTerminalListing(): void {
+    this.terminalService.getInfo(this.projectId).subscribe({
+      next: info => {
+        this.terminalCwd.set(info.cwd);
+        this.showDirectoryListing(info);
+        this.scrollTerminalToBottom();
+      }
+    });
+  }
+
+  loadTerminalInfo(showListing = false): void {
+    const saved = localStorage.getItem(this.terminalShellStorageKey());
+    this.terminalService.getInfo(this.projectId).subscribe({
+      next: info => {
+        this.terminalShells.set(info.availableShells?.length ? info.availableShells : ['bash']);
+        const shells = this.terminalShells();
+        if (saved && shells.includes(saved)) {
+          this.terminalShell = saved;
+        } else {
+          this.terminalShell = info.defaultShell || shells[0];
+        }
+        this.terminalCwd.set(info.cwd);
+        this.appendTerminalMeta('Gõ lệnh git hoặc shell — Enter để chạy. Thư mục làm việc:');
+        this.appendTerminalLine('meta', info.cwd);
+        if (showListing) {
+          this.showDirectoryListing(info);
+        }
+        setTimeout(() => this.focusTerminalInput(), 0);
+      },
+      error: () => {
+        this.appendTerminalLine('error', 'Không tải được thông tin terminal.');
+        setTimeout(() => this.focusTerminalInput(), 0);
+      }
+    });
+  }
+
+  private showDirectoryListing(info: { cwd: string; directoryListing?: string }): void {
+    this.appendTerminalMeta('--- Nội dung thư mục ---');
+    if (info.directoryListing) {
+      for (const line of info.directoryListing.split('\n')) {
+        this.appendTerminalLine('output', line);
+      }
+    } else {
+      this.appendTerminalLine('meta', '(trống)');
+    }
+  }
+
+  onTerminalShellChange(): void {
+    localStorage.setItem(this.terminalShellStorageKey(), this.terminalShell);
+    this.appendTerminalMeta(`Đã chuyển sang ${this.terminalShell === 'powershell' ? 'PowerShell' : 'Bash'}.`);
+  }
+
+  clearTerminal(): void {
+    this.terminalLines.set([]);
+  }
+
+  runTerminalQuick(command: string): void {
+    this.terminalInput = command;
+    this.runTerminalCommand();
+  }
+
+  runTerminalCommand(event?: Event): void {
+    event?.preventDefault();
+    const command = this.terminalInput.trim();
+    if (!command || this.terminalRunning()) return;
+
+    this.terminalHistory.push(command);
+    this.terminalHistoryIndex = this.terminalHistory.length;
+    this.appendTerminalLine('prompt', `${this.terminalPrompt()}${command}`);
+    this.terminalInput = '';
+    this.terminalRunning.set(true);
+
+    this.terminalService.exec(this.projectId, command, this.terminalShell).pipe(
+      finalize(() => {
+        this.terminalRunning.set(false);
+        setTimeout(() => this.focusTerminalInput(), 0);
+      })
+    ).subscribe({
+      next: res => {
+        const out = res.output?.trimEnd();
+        if (out) {
+          this.appendTerminalLine('output', out);
+        } else if (res.exitCode === 0) {
+          this.appendTerminalLine('meta', '(không có output)');
+        }
+        if (res.exitCode !== 0) {
+          this.appendTerminalLine('error', `exit code: ${res.exitCode}`);
+        }
+        if (res.cwd) this.terminalCwd.set(res.cwd);
+        this.scrollTerminalToBottom();
+        if (command.startsWith('git') && (command.includes('pull') || command.includes('checkout'))) {
+          this.loadTree();
+        }
+        if (command.startsWith('git') && this.gitConnection()?.connected) {
+          this.refreshGitStatus();
+        }
+        const listCmd = command === 'ls' || command === 'ls -la' || command === 'dir'
+          || command.toLowerCase().startsWith('get-childitem');
+        if (listCmd) {
+          this.refreshTerminalListing();
+        }
+      },
+      error: err => {
+        this.appendTerminalLine('error', err?.error?.message ?? 'Lỗi chạy lệnh.');
+        this.scrollTerminalToBottom();
+      }
+    });
+  }
+
+  private appendTerminalLine(kind: TerminalLine['kind'], text: string): void {
+    this.terminalLines.update(lines => [...lines, { kind, text }]);
+  }
+
+  private appendTerminalMeta(text: string): void {
+    this.appendTerminalLine('meta', text);
+  }
+
+  private scrollTerminalToBottom(): void {
+    setTimeout(() => {
+      const el = this.terminalOutputEl()?.nativeElement;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 0);
+  }
+
+  private terminalShellStorageKey(): string {
+    return `ide-terminal-shell-${this.projectId}`;
   }
 
   private getSelectionContext(): IdeSelectionContext | null {
