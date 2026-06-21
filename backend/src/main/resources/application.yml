@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: ai-platform
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+server:
+  port: 8080
+
+app:
+  ai:
+    default-model: llama-3.1-8b-instant
+    fallback-model: gemini-2.0-flash-lite
+    providers:
+      groq:
+        enabled: true
+        priority: 1
+        base-url: https://api.groq.com/openai/v1
+        api-key: ${GROQ_API_KEY:}
+        completions-path: /chat/completions
+        default-model: llama-3.1-8b-instant
+      gemini:
+        enabled: true
+        priority: 3
+        base-url: https://generativelanguage.googleapis.com/v1beta/openai
+        api-key: ${GOOGLE_API_KEY:}
+        completions-path: /chat/completions
+        default-model: gemini-2.0-flash-lite
+      openrouter:
+        enabled: true
+        priority: 2
+        base-url: https://openrouter.ai/api/v1
+        api-key: ${OPENROUTER_API_KEY:}
+        completions-path: /chat/completions
+        default-model: meta-llama/llama-3.1-8b-instruct:free
+        http-referer: ${OPENROUTER_HTTP_REFERER:http://localhost:4200}
+        app-title: ${OPENROUTER_APP_TITLE:AI Platform}
+  jwt:
+    secret: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-must-be-long-enough}
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+  upload:
+    dir: ${UPLOAD_DIR:uploads}
+  cors:
+    allowed-origins: http://localhost:4200
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+    import: optional:classpath:application-local.yml
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ai_platform?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+  flyway:
+    locations: classpath:db/migration
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ai_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect

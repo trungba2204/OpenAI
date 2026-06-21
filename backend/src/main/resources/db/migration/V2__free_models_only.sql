@@ -1,0 +1,2 @@
+UPDATE conversations SET model = 'GEMINI_FLASH'
+WHERE model NOT IN ('GEMINI_FLASH', 'GEMINI_15_FLASH');

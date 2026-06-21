@@ -1,0 +1,2 @@
+UPDATE conversations SET model = 'GROQ_LLAMA_8B'
+WHERE model IN ('GEMINI_FLASH_LITE', 'GEMINI_FLASH');

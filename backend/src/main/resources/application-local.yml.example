@@ -1,0 +1,15 @@
+# Sao chép thành application-local.yml và sửa thông tin MySQL + API keys
+spring:
+  datasource:
+    username: root
+    password: your_mysql_password
+
+app:
+  ai:
+    providers:
+      groq:
+        api-key: gsk_your_groq_key
+      gemini:
+        api-key: AIza_your_gemini_key
+      openrouter:
+        api-key: sk-or-v1_your_openrouter_key

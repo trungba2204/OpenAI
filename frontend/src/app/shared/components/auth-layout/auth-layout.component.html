@@ -1,0 +1,42 @@
+<div class="auth-page">
+  <aside class="auth-brand">
+    <div class="brand-content">
+      <div class="brand-logo">
+        <div class="logo-icon">✨</div>
+        <span class="logo-text">AI Platform</span>
+      </div>
+      <h1 class="brand-headline">Trợ lý AI thông minh cho mọi công việc</h1>
+      <p class="brand-desc">
+        Chat đa mô hình, đọc tài liệu, thư viện prompt và agent tự động — tất cả trong một nền tảng.
+      </p>
+    </div>
+    <ul class="brand-features">
+      <li><span class="feat-icon">💬</span> Chat GPT, Claude, Gemini &amp; DeepSeek</li>
+      <li><span class="feat-icon">📄</span> Upload &amp; phân tích PDF, Word</li>
+      <li><span class="feat-icon">🤖</span> Agent gọi database &amp; API</li>
+      <li><span class="feat-icon">📊</span> Sinh Markdown &amp; PowerPoint</li>
+    </ul>
+  </aside>
+
+  <div class="auth-form-side">
+    <div class="auth-topbar">
+      <button type="button" class="theme-btn" (click)="theme.toggle()" [attr.aria-label]="theme.isDark() ? 'Light mode' : 'Dark mode'">
+        {{ theme.isDark() ? '☀️' : '🌙' }}
+      </button>
+    </div>
+
+    <div class="auth-form-container">
+      <div class="auth-card">
+        <div class="auth-mobile-logo">
+          <div class="logo-icon">✨</div>
+          <span class="logo-text">AI Platform</span>
+        </div>
+
+        <h2 class="auth-title">{{ title() }}</h2>
+        <p class="auth-subtitle">{{ subtitle() }}</p>
+
+        <ng-content />
+      </div>
+    </div>
+  </div>
+</div>
