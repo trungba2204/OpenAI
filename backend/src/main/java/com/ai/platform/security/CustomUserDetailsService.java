@@ -1,6 +1,7 @@
 package com.ai.platform.security;
 
 import com.ai.platform.user.entity.User;
+import com.ai.platform.user.entity.UserStatus;
 import com.ai.platform.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,6 +31,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .username(user.getEmail())
                 .password(user.getPasswordHash())
                 .authorities(authorities)
+                .disabled(user.getStatus() == UserStatus.LOCKED)
                 .build();
     }
 }

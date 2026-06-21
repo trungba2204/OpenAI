@@ -4,14 +4,19 @@ import { finalize } from 'rxjs';
 import { LoadingService } from '../services/loading.service';
 
 function shouldShowLoading(url: string): boolean {
-  return url.includes('/auth/login') || url.includes('/auth/register');
+  return url.includes('/auth/login')
+    || url.includes('/auth/register')
+    || url.includes('/api/admin/');
 }
 
 function loadingMessage(url: string): string {
   if (url.includes('/auth/register')) {
     return 'Đang đăng ký...';
   }
-  return 'Đang đăng nhập...';
+  if (url.includes('/auth/login')) {
+    return 'Đang đăng nhập...';
+  }
+  return 'Đang tải...';
 }
 
 export const loadingInterceptor: HttpInterceptorFn = (req, next) => {

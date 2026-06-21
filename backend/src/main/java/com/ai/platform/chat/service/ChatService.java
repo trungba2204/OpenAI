@@ -11,6 +11,7 @@ import com.ai.platform.chat.repository.MessageRepository;
 import com.ai.platform.common.exception.ApiException;
 import com.ai.platform.document.entity.Document;
 import com.ai.platform.document.repository.DocumentRepository;
+import com.ai.platform.usage.service.UsageTrackingService;
 import com.ai.platform.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -37,6 +38,7 @@ public class ChatService {
     private final ModelRouterService modelRouterService;
     private final DocumentRepository documentRepository;
     private final TransactionTemplate transactionTemplate;
+    private final UsageTrackingService usageTrackingService;
 
     @Transactional(readOnly = true)
     public List<ConversationDto> getConversations(User user) {
@@ -77,6 +79,8 @@ public class ChatService {
         String response = callLlm(conversation, request.getContent());
         Message assistantMessage = saveAssistantMessage(conversation, response);
         updateConversationTitle(conversation, request.getContent());
+        usageTrackingService.recordUsage(user, conversation, request.getModel() != null ? request.getModel() : conversation.getModel(),
+                request.getContent(), response);
 
         return toMessageDto(assistantMessage);
     }
@@ -96,6 +100,7 @@ public class ChatService {
 
         Prompt prompt = buildPrompt(conversationWithDocs, request.getContent());
         final AiModel model = request.getModel() != null ? request.getModel() : conversationWithDocs.getModel();
+        final String promptContent = request.getContent();
 
         StringBuilder fullResponse = new StringBuilder();
         return modelRouterService.streamContent(model, prompt)
@@ -106,6 +111,7 @@ public class ChatService {
                             Conversation c = conversationRepository.findById(conversationId)
                                     .orElseThrow(() -> new ApiException("Conversation not found", HttpStatus.NOT_FOUND));
                             saveAssistantMessage(c, fullResponse.toString());
+                            usageTrackingService.recordUsage(user, c, model, promptContent, fullResponse.toString());
                         });
                     }
                 })

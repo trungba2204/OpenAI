@@ -1,20 +1,34 @@
-<div class="auth-page">
+<div class="auth-page" [class.auth-page--admin]="variant() === 'admin'">
   <aside class="auth-brand">
     <div class="brand-content">
       <div class="brand-logo">
-        <div class="logo-icon">✨</div>
-        <span class="logo-text">AI Platform</span>
+        <div class="logo-icon">{{ variant() === 'admin' ? '🛡️' : '✨' }}</div>
+        <span class="logo-text">{{ variant() === 'admin' ? 'Admin Portal' : 'AI Platform' }}</span>
       </div>
-      <h1 class="brand-headline">Trợ lý AI thông minh cho mọi công việc</h1>
-      <p class="brand-desc">
-        Chat đa mô hình, đọc tài liệu, thư viện prompt và agent tự động — tất cả trong một nền tảng.
-      </p>
+      @if (variant() === 'admin') {
+        <h1 class="brand-headline">Quản trị nền tảng AI</h1>
+        <p class="brand-desc">
+          Giám sát người dùng, theo dõi usage AI, phân tích token và chi phí — dành riêng cho quản trị viên.
+        </p>
+      } @else {
+        <h1 class="brand-headline">Trợ lý AI thông minh cho mọi công việc</h1>
+        <p class="brand-desc">
+          Chat đa mô hình, đọc tài liệu, thư viện prompt và agent tự động — tất cả trong một nền tảng.
+        </p>
+      }
     </div>
     <ul class="brand-features">
-      <li><span class="feat-icon">💬</span> Chat với Llama, DeepSeek &amp; GPT</li>
-      <li><span class="feat-icon">📄</span> Upload &amp; phân tích PDF, Word</li>
-      <li><span class="feat-icon">🤖</span> Agent gọi database &amp; API</li>
-      <li><span class="feat-icon">📊</span> Sinh Markdown &amp; PowerPoint</li>
+      @if (variant() === 'admin') {
+        <li><span class="feat-icon">📊</span> Dashboard tổng quan hệ thống</li>
+        <li><span class="feat-icon">👥</span> Quản lý &amp; khóa tài khoản</li>
+        <li><span class="feat-icon">📈</span> Theo dõi AI usage realtime</li>
+        <li><span class="feat-icon">💰</span> Phân tích token &amp; chi phí</li>
+      } @else {
+        <li><span class="feat-icon">💬</span> Chat với Llama, DeepSeek &amp; GPT</li>
+        <li><span class="feat-icon">📄</span> Upload &amp; phân tích PDF, Word</li>
+        <li><span class="feat-icon">🤖</span> Agent gọi database &amp; API</li>
+        <li><span class="feat-icon">📊</span> Sinh Markdown &amp; PowerPoint</li>
+      }
     </ul>
   </aside>
 
@@ -28,8 +42,8 @@
     <div class="auth-form-container">
       <div class="auth-card">
         <div class="auth-mobile-logo">
-          <div class="logo-icon">✨</div>
-          <span class="logo-text">AI Platform</span>
+          <div class="logo-icon">{{ variant() === 'admin' ? '🛡️' : '✨' }}</div>
+          <span class="logo-text">{{ variant() === 'admin' ? 'Admin Portal' : 'AI Platform' }}</span>
         </div>
 
         <h2 class="auth-title">{{ title() }}</h2>

@@ -12,6 +12,7 @@ import com.ai.platform.chat.entity.Message;
 import com.ai.platform.chat.repository.ConversationRepository;
 import com.ai.platform.chat.repository.MessageRepository;
 import com.ai.platform.common.exception.ApiException;
+import com.ai.platform.usage.service.UsageTrackingService;
 import com.ai.platform.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
@@ -32,6 +33,7 @@ public class AgentService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final AgentRunRepository agentRunRepository;
+    private final UsageTrackingService usageTrackingService;
 
     @Transactional
     public String agentChat(User user, AgentChatRequest request) {
@@ -69,6 +71,7 @@ public class AgentService {
                     .content(response)
                     .build();
             messageRepository.save(assistantMessage);
+            usageTrackingService.recordUsage(user, conversation, model, request.getContent(), response);
 
             return response;
         } finally {

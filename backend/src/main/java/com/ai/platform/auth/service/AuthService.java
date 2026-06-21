@@ -7,6 +7,7 @@ import com.ai.platform.common.exception.ApiException;
 import com.ai.platform.security.JwtTokenProvider;
 import com.ai.platform.user.entity.Role;
 import com.ai.platform.user.entity.User;
+import com.ai.platform.user.entity.UserStatus;
 import com.ai.platform.user.repository.RoleRepository;
 import com.ai.platform.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +61,28 @@ public class AuthService {
         );
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ApiException("User not found", HttpStatus.NOT_FOUND));
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new ApiException("Account is locked", HttpStatus.FORBIDDEN);
+        }
+        if (!isUserAccount(user)) {
+            throw new ApiException("Tài khoản quản trị vui lòng đăng nhập tại Admin Portal", HttpStatus.FORBIDDEN);
+        }
+        return buildAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthResponse adminLogin(LoginRequest request) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ApiException("User not found", HttpStatus.NOT_FOUND));
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new ApiException("Account is locked", HttpStatus.FORBIDDEN);
+        }
+        if (!isAdminAccount(user)) {
+            throw new ApiException("Tài khoản người dùng không thể đăng nhập Admin Portal", HttpStatus.FORBIDDEN);
+        }
         return buildAuthResponse(user);
     }
 
@@ -136,5 +159,17 @@ public class AuthService {
                 .fullName(user.getFullName())
                 .roles(roles)
                 .build();
+    }
+
+    private boolean hasRole(User user, String roleName) {
+        return user.getRoles().stream().anyMatch(r -> roleName.equals(r.getName()));
+    }
+
+    private boolean isUserAccount(User user) {
+        return hasRole(user, "USER") && !hasRole(user, "ADMIN");
+    }
+
+    private boolean isAdminAccount(User user) {
+        return hasRole(user, "ADMIN") && !hasRole(user, "USER");
     }
 }

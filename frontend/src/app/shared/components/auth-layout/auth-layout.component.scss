@@ -394,4 +394,24 @@
       text-decoration: underline;
     }
   }
+
+  &--admin-link {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+.auth-page--admin {
+  .auth-brand {
+    background: linear-gradient(145deg, #0f4c3a 0%, #0d6b52 45%, #0a3d2e 100%);
+  }
+
+  .auth-submit--admin {
+    background: #0d6b52;
+
+    &:hover:not(:disabled) {
+      background: #0a5542;
+    }
+  }
 }

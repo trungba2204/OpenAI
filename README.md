@@ -12,6 +12,7 @@ Nền tảng AI SaaS với Angular 20 + Spring Boot 3.4 + Spring AI 1.0.
 - Agent Mode với tool calling
 - Markdown Generator
 - PPT Generator
+- **Admin Portal** (Dashboard, Users, AI Usage, Conversations, Analytics) — chỉ `ROLE_ADMIN`
 
 ## Cấu trúc
 
@@ -122,6 +123,35 @@ Frontend chạy tại `http://localhost:4200`
 | POST | `/api/agent/chat` | Agent mode |
 | POST | `/api/generate/markdown` | Sinh Markdown |
 | POST | `/api/generate/ppt` | Sinh PPT |
+| GET | `/api/admin/dashboard` | Admin dashboard (ROLE_ADMIN) |
+| GET | `/api/admin/users` | Quản lý users |
+| GET | `/api/admin/usages` | Lịch sử AI usage |
+| GET | `/api/admin/conversations` | Giám sát hội thoại |
+| GET | `/api/admin/models/statistics` | Thống kê model |
+| GET | `/api/admin/analytics/tokens` | Phân tích token |
+| GET | `/api/admin/analytics/cost` | Phân tích chi phí |
+
+## Admin Portal
+
+Tài khoản **admin** và **user** tách biệt hoàn toàn:
+
+| Loại | Role | Đăng nhập | Không thể |
+|------|------|-----------|-----------|
+| User app | `USER` only | `/login` | Vào Admin Portal |
+| Admin | `ADMIN` only | `/admin/login` | Vào app user (`/login`) |
+
+**Tài khoản admin mặc định** (tạo bởi migration `V10__dedicated_admin_account.sql`):
+
+| Email | Mật khẩu |
+|-------|----------|
+| `admin@aiplatform.local` | `Admin@123456` |
+
+> Đổi mật khẩu sau khi deploy production.
+
+1. Restart backend để Flyway chạy migration mới nhất.
+2. Truy cập **`http://localhost:4200/admin/login`**.
+3. Đăng nhập bằng tài khoản admin ở trên → vào `/admin/dashboard`.
+4. Tài khoản đăng ký qua `/register` chỉ là user thường, **không thể** đăng nhập admin.
 
 ## Giao diện
 

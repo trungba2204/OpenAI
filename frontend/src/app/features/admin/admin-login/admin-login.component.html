@@ -1,0 +1,62 @@
+<app-auth-layout
+  variant="admin"
+  title="Đăng nhập quản trị"
+  subtitle="Chỉ dành cho tài khoản có quyền Admin">
+  @if (error) {
+    <div class="auth-alert">
+      <span>⚠️</span>
+      <span>{{ error }}</span>
+    </div>
+  }
+
+  <form class="auth-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div class="form-group">
+      <label class="form-label" for="admin-email">Email admin</label>
+      <div class="input-wrap">
+        <span class="input-icon">✉️</span>
+        <input
+          id="admin-email"
+          type="email"
+          formControlName="email"
+          placeholder="admin@email.com"
+          autocomplete="email"
+          [class.invalid]="form.controls.email.touched && form.controls.email.invalid"
+        />
+      </div>
+      @if (form.controls.email.touched && form.controls.email.hasError('email')) {
+        <span class="form-error">Email không hợp lệ</span>
+      }
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="admin-password">Mật khẩu</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input
+          id="admin-password"
+          [type]="showPassword ? 'text' : 'password'"
+          formControlName="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          [class.invalid]="form.controls.password.touched && form.controls.password.invalid"
+        />
+        <button type="button" class="toggle-pwd" (click)="showPassword = !showPassword" tabindex="-1">
+          {{ showPassword ? '🙈' : '👁️' }}
+        </button>
+      </div>
+    </div>
+
+    <button type="submit" class="auth-submit auth-submit--admin" [disabled]="form.invalid || loading">
+      @if (loading) {
+        <span class="spinner"></span>
+        Đang đăng nhập...
+      } @else {
+        Vào Admin Portal
+      }
+    </button>
+  </form>
+
+  <p class="auth-footer">
+    Người dùng thường?<a routerLink="/login">Đăng nhập ứng dụng</a>
+  </p>
+</app-auth-layout>

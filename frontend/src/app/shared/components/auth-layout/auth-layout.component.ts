@@ -12,4 +12,5 @@ export class AuthLayoutComponent {
   theme = inject(ThemeService);
   title = input.required<string>();
   subtitle = input.required<string>();
+  variant = input<'user' | 'admin'>('user');
 }
