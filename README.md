@@ -12,6 +12,7 @@ Nền tảng AI SaaS với Angular 20 + Spring Boot 3.4 + Spring AI 1.0.
 - Agent Mode với tool calling
 - Markdown Generator
 - PPT Generator
+- **AI IDE Workspace** (Monaco Editor, upload ZIP, AI chat theo code)
 - **Admin Portal** (Dashboard, Users, AI Usage, Conversations, Analytics) — chỉ `ROLE_ADMIN`
 
 ## Cấu trúc
@@ -109,6 +110,27 @@ npm start
 ```
 
 Frontend chạy tại `http://localhost:4200`
+
+## AI IDE Workspace (Phase 1)
+
+Theo `AgentIDE.md` — MVP gồm:
+
+| Tính năng | Route |
+|-----------|-------|
+| Danh sách workspace | `/workspaces` |
+| Quản lý project (upload ZIP) | `/workspaces/:id` |
+| Monaco Editor + AI Chat | `/projects/:id` |
+
+**Luồng sử dụng:**
+
+1. Sidebar → **AI IDE** → tạo workspace
+2. Upload file `.zip` source code hoặc tạo project trống
+3. Mở project → chọn file cây thư mục → chỉnh sửa trong Monaco
+4. Panel **AI Assistant** bên phải — hỏi về code (có context file đang mở)
+
+**API chính:** `/api/workspaces`, `/api/projects/upload`, `/api/projects/{id}/tree`, `/api/files/{id}`, `/api/ai/chat`
+
+> Restart backend để Flyway chạy migration `V11__ide_workspace.sql`.
 
 ## API chính
 

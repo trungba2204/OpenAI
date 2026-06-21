@@ -5,8 +5,8 @@ spring:
     active: dev
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 200MB
+      max-request-size: 500MB
   jpa:
     hibernate:
       ddl-auto: validate
@@ -20,6 +20,9 @@ spring:
 
 server:
   port: 8080
+  tomcat:
+    max-http-form-post-size: 500MB
+    max-swallow-size: 500MB
 
 app:
   ai:
@@ -48,6 +51,10 @@ app:
     refresh-token-expiration-ms: 604800000
   upload:
     dir: ${UPLOAD_DIR:uploads}
+  ide:
+    import:
+      max-files: 20000
+      max-total-mb: 500
   cors:
     allowed-origins: http://localhost:4200
 
@@ -62,6 +69,9 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      auto-commit: true
+      maximum-pool-size: 20
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
   flyway:

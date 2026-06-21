@@ -7,6 +7,7 @@ import com.ai.platform.usage.repository.AiUsageRepository;
 import com.ai.platform.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -20,7 +21,7 @@ public class UsageTrackingService {
 
     private final AiUsageRepository aiUsageRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordUsage(User user, Conversation conversation, AiModel model,
                             String prompt, String response) {
         int inputTokens = estimateTokens(prompt);
@@ -41,7 +42,7 @@ public class UsageTrackingService {
                 .build());
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordUsage(User user, Conversation conversation, String modelName,
                             String prompt, String response) {
         AiModel model = AiModel.fromModelId(modelName);

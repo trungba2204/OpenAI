@@ -5,6 +5,12 @@ import { catchError, switchMap, throwError } from 'rxjs';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
+
+  // Không gắn JWT cho API bên ngoài (Open VSX) — tránh lỗi CORS/preflight
+  if (req.url.includes('open-vsx.org')) {
+    return next(req);
+  }
+
   const token = auth.getAccessToken();
 
   if (token && !req.url.includes('/auth/')) {

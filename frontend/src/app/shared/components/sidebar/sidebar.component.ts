@@ -55,6 +55,9 @@ import { Conversation } from '../../../core/models';
         <a routerLink="/ppt" routerLinkActive="active" class="chat-sidebar__link">
           <span>📊</span> PPT Generator
         </a>
+        <a routerLink="/workspaces" routerLinkActive="active" class="chat-sidebar__link">
+          <span>💻</span> AI IDE
+        </a>
       </nav>
 
       <div class="chat-sidebar__footer">

@@ -11,6 +11,9 @@ export const routes: Routes = [
   { path: 'agent', loadComponent: () => import('./features/agent/agent-page/agent-page.component').then(m => m.AgentPageComponent), canActivate: [authGuard] },
   { path: 'markdown', loadComponent: () => import('./features/markdown/markdown-generator/markdown-generator.component').then(m => m.MarkdownGeneratorComponent), canActivate: [authGuard] },
   { path: 'ppt', loadComponent: () => import('./features/ppt/ppt-generator/ppt-generator.component').then(m => m.PptGeneratorComponent), canActivate: [authGuard] },
+  { path: 'workspaces', loadComponent: () => import('./features/ide/workspace-list/workspace-list.component').then(m => m.WorkspaceListComponent), canActivate: [authGuard] },
+  { path: 'workspaces/:id', loadComponent: () => import('./features/ide/workspace-detail/workspace-detail.component').then(m => m.WorkspaceDetailComponent), canActivate: [authGuard] },
+  { path: 'projects/:id', loadComponent: () => import('./features/ide/project-editor/project-editor.component').then(m => m.ProjectEditorComponent), canActivate: [authGuard] },
   {
     path: 'admin/login',
     loadComponent: () => import('./features/admin/admin-login/admin-login.component').then(m => m.AdminLoginComponent),
