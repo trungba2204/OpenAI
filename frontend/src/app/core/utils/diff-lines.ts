@@ -11,3 +11,12 @@ export function getChangedLineNumbers(oldText: string, newText: string): number[
   }
   return changed;
 }
+
+export {
+  mergePartialEdit,
+  applyScopedEdit,
+  extractCodeFromAi,
+  pathsMatch,
+  resolveSelectionEndLine,
+  sanitizeReplacementInScope
+} from './partial-edit';

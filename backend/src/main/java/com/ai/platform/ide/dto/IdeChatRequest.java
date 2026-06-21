@@ -15,4 +15,9 @@ public class IdeChatRequest {
     /** FILE, FOLDER, PROJECT, RAG */
     private String contextScope = "PROJECT";
     private AiModel model;
+    /** Khi user bôi đen code — chỉ sửa trong phạm vi này */
+    private Integer startLine;
+    private Integer endLine;
+    private String selectedCode;
+    private String selectedFilePath;
 }

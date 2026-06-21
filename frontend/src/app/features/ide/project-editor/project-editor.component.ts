@@ -13,11 +13,17 @@ import { ChatService } from '../../../core/services/chat.service';
 import { AiModel, AiModelInfo } from '../../../core/models';
 import {
   ContextScope, FileTreeNode, GitConnection, IdeAgentResponse,
-  IdeChatMessage, IdeFileEdit, IdeSearchResult, InlineAction, Project
+  IdeChatMessage, IdeFileEdit, IdeSearchResult, IdeSelectionContext, InlineAction, Project
 } from '../../../core/models/ide';
 import { forkJoin, map, Observable, of } from 'rxjs';
 import { stripMarkdown } from '../../../core/utils/plain-text';
-import { getChangedLineNumbers } from '../../../core/utils/diff-lines';
+import {
+  getChangedLineNumbers,
+  applyScopedEdit,
+  extractCodeFromAi,
+  pathsMatch,
+  resolveSelectionEndLine
+} from '../../../core/utils/diff-lines';
 import { IdeExtensionService } from '../../../core/services/ide-extension.service';
 import { IdeExtensionsPanelComponent } from '../ide-extensions-panel/ide-extensions-panel.component';
 import { IdeExtensionInfo } from '../../../core/models/ide-extension';
@@ -503,6 +509,8 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   pendingEdits = signal<IdeFileEdit[]>([]);
   stagedEdits = signal<StagedEdit[]>([]);
   autoFixMode = signal(false);
+  /** Giữ vùng chọn tại thời điểm gọi AI — không phụ thuộc selection sau khi AI trả lời */
+  pendingEditSelection = signal<IdeSelectionContext | null>(null);
   searchQuery = '';
   searchResults = signal<IdeSearchResult[]>([]);
   searchSummary = signal('');
@@ -883,12 +891,15 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       this.chatMessages.update(m => [...m, { role: 'user', content: '🩹 Tự sửa code' }]);
     }
     this.aiLoading.set(true);
+    this.pendingEditSelection.set(this.getSelectionContext());
+    const selection = this.pendingEditSelection();
     this.ideAiService.autoFix(
       this.projectId,
       this.activeFileId(),
       prompt,
       this.resolveContextScope(),
-      this.selectedModel
+      this.selectedModel,
+      selection ?? undefined
     ).subscribe({
       next: res => {
         this.aiLoading.set(false);
@@ -1054,22 +1065,40 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   runInline(action: InlineAction): void {
     const code = this.selectedCode();
     if (!code || this.aiLoading()) return;
+    const selection = this.getSelectionContext();
+    const currentSel = this.editor?.getSelection();
+    const savedRange = currentSel && !currentSel.isEmpty() && this.monaco
+      ? new this.monaco.Range(
+        currentSel.startLineNumber,
+        currentSel.startColumn,
+        currentSel.endLineNumber,
+        currentSel.endColumn
+      )
+      : null;
     this.setRightPanel('chat');
-    this.chatMessages.update(m => [...m, { role: 'user', content: `[${action}] ${code.slice(0, 120)}...` }]);
+    const rangeLabel = selection
+      ? `dòng ${selection.startLine}-${selection.endLine}`
+      : 'đoạn chọn';
+    this.chatMessages.update(m => [...m, { role: 'user', content: `[${action}] ${rangeLabel}: ${code.slice(0, 100)}...` }]);
     this.aiLoading.set(true);
-    this.ideAiService.inline(this.projectId, this.activeFileId(), code, action, this.selectedModel).subscribe({
+    const rangeMeta = selection
+      ? { startLine: selection.startLine, endLine: selection.endLine, filePath: selection.filePath }
+      : undefined;
+    this.ideAiService.inline(this.projectId, this.activeFileId(), code, action, this.selectedModel, rangeMeta).subscribe({
       next: res => {
-        if (action === 'REFACTOR' && this.editor) {
-          const selection = this.editor.getSelection();
-          if (selection && !selection.isEmpty()) {
-            this.editor.executeEdits('inline-refactor', [{
-              range: selection,
-              text: res.response,
+        if ((action === 'REFACTOR' || action === 'OPTIMIZE') && this.editor && savedRange) {
+          const text = extractCodeFromAi(res.response);
+          if (text) {
+            this.editor.executeEdits('inline-edit', [{
+              range: savedRange,
+              text,
               forceMoveMarkers: true
             }]);
           }
+          this.appendAssistantMessage(`Đã áp dụng ${action} vào vùng đã chọn (dòng ${selection?.startLine}-${selection?.endLine}).`, false);
+        } else {
+          this.appendAssistantMessage(res.response);
         }
-        this.appendAssistantMessage(res.response);
         this.aiLoading.set(false);
       },
       error: () => {
@@ -1214,18 +1243,23 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!edits.length || this.applyingEdits()) return;
     this.applyingEdits.set(true);
     this.pendingEdits.set([]);
+    const lockedSelection = this.pendingEditSelection();
 
     const loaders = edits.map(edit => this.resolveOriginalForEdit(edit).pipe(
-      map(base => ({
-        ...base,
-        newContent: edit.content,
-        create: edit.create,
-        changedLines: getChangedLineNumbers(base.originalContent, edit.content)
-      }))
+      map(base => {
+        const newContent = applyScopedEdit(base.originalContent, edit, lockedSelection);
+        return {
+          ...base,
+          newContent,
+          create: edit.create,
+          changedLines: getChangedLineNumbers(base.originalContent, newContent)
+        };
+      })
     ));
 
     forkJoin(loaders).subscribe({
       next: staged => {
+        this.pendingEditSelection.set(null);
         this.stagedEdits.set(staged);
         this.applyingEdits.set(false);
         for (const s of staged) {
@@ -1235,7 +1269,7 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
           }
         }
         const firstOpen = staged.find(s => s.fileId);
-        if (firstOpen?.fileId) {
+        if (firstOpen?.fileId && this.activeFileId() !== firstOpen.fileId) {
           this.selectTab(firstOpen.fileId);
         } else {
           this.highlightActiveFile();
@@ -1248,6 +1282,7 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       error: () => {
         this.applyingEdits.set(false);
         this.pendingEdits.set(edits);
+        this.pendingEditSelection.set(lockedSelection);
         this.appendAssistantMessage('Lỗi khi áp dụng thay đổi.', false);
       }
     });
@@ -1319,8 +1354,11 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private resolveOriginalForEdit(edit: IdeFileEdit): Observable<Pick<StagedEdit, 'path' | 'fileId' | 'originalContent'>> {
-    const node = this.flatTree().find(n => n.path === edit.path && !n.directory);
+    const node = this.flatTree().find(n => !n.directory && pathsMatch(n.path, edit.path));
     if (node) {
+      if (this.activeFileId() === node.id && this.editor) {
+        return of({ path: edit.path, fileId: node.id, originalContent: this.editor.getValue() });
+      }
       const tab = this.tabs().find(t => t.fileId === node.id);
       if (tab) {
         return of({ path: edit.path, fileId: node.id, originalContent: tab.content });
@@ -1529,9 +1567,10 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     this.selectedCode.set(code);
+    const startLine = selection.startLineNumber;
     this.selectedRange.set({
-      startLine: selection.startLineNumber,
-      endLine: selection.endLineNumber
+      startLine,
+      endLine: resolveSelectionEndLine(startLine, code)
     });
 
     const coords = this.editor.getScrolledVisiblePosition({
@@ -1572,6 +1611,33 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.selectionWidgetVisible.set(false);
     this.editor?.dispose();
     this.editor = null;
+  }
+
+  private getSelectionContext(): IdeSelectionContext | null {
+    const tab = this.activeTab();
+    const range = this.selectedRange();
+    const code = this.selectedCode().trim();
+    if (tab && range && code) {
+      const startLine = range.startLine;
+      return {
+        startLine,
+        endLine: resolveSelectionEndLine(startLine, code),
+        selectedCode: code,
+        filePath: tab.path
+      };
+    }
+    const snippet = this.chatAttachments().find(a => a.kind === 'snippet' && a.fileId === tab?.fileId);
+    if (snippet && tab) {
+      const snippetCode = snippet.code.trim();
+      const startLine = snippet.startLine;
+      return {
+        startLine,
+        endLine: resolveSelectionEndLine(startLine, snippetCode),
+        selectedCode: snippetCode,
+        filePath: snippet.filePath
+      };
+    }
+    return null;
   }
 
   private flattenTree(nodes: FileTreeNode[], depth = 0): Array<FileTreeNode & { depth: number }> {

@@ -9,6 +9,7 @@ import {
   IdeChatResponse,
   IdeMultiEditResponse,
   IdeSearchResponse,
+  IdeSelectionContext,
   InlineAction
 } from '../models/ide';
 
@@ -39,10 +40,19 @@ export class IdeAiService {
     fileId: number | null,
     selectedCode: string,
     action: InlineAction,
-    model?: AiModel
+    model?: AiModel,
+    selection?: Pick<IdeSelectionContext, 'startLine' | 'endLine' | 'filePath'>
   ): Observable<IdeChatResponse> {
     return this.http.post<IdeChatResponse>(`${this.base}/inline`, this.withModel({
-      projectId, fileId, selectedCode, action
+      projectId,
+      fileId,
+      selectedCode,
+      action,
+      ...(selection ? {
+        startLine: selection.startLine,
+        endLine: selection.endLine,
+        selectedFilePath: selection.filePath
+      } : {})
     }, model));
   }
 
@@ -63,10 +73,20 @@ export class IdeAiService {
     fileId: number | null,
     message: string,
     contextScope: ContextScope = 'PROJECT',
-    model?: AiModel
+    model?: AiModel,
+    selection?: IdeSelectionContext
   ): Observable<IdeMultiEditResponse> {
     return this.http.post<IdeMultiEditResponse>(`${this.base}/auto-fix`, this.withModel({
-      projectId, fileId, message, contextScope
+      projectId,
+      fileId,
+      message,
+      contextScope,
+      ...(selection ? {
+        startLine: selection.startLine,
+        endLine: selection.endLine,
+        selectedCode: selection.selectedCode,
+        selectedFilePath: selection.filePath
+      } : {})
     }, model));
   }
 

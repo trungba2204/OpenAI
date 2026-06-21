@@ -51,6 +51,16 @@ export interface IdeFileEdit {
   path: string;
   content: string;
   create: boolean;
+  partial?: boolean;
+  startLine?: number;
+  endLine?: number;
+}
+
+export interface IdeSelectionContext {
+  startLine: number;
+  endLine: number;
+  selectedCode: string;
+  filePath: string;
 }
 
 export interface IdeMultiEditResponse {

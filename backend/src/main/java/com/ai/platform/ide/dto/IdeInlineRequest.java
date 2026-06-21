@@ -16,4 +16,7 @@ public class IdeInlineRequest {
     @NotBlank
     private String action;
     private AiModel model;
+    private Integer startLine;
+    private Integer endLine;
+    private String selectedFilePath;
 }

@@ -73,15 +73,22 @@ public class IdeAiService {
         Project project = projectService.getOwned(user, request.getProjectId());
         String fileCtx = ideContextService.buildContext(user, project, request.getFileId(), "FILE", null);
         String action = request.getAction().toUpperCase();
+        String rangeHint = "";
+        if (request.getStartLine() != null && request.getEndLine() != null) {
+            rangeHint = "ONLY modify lines %d-%d. Return replacement for that range only.\n"
+                    .formatted(request.getStartLine(), request.getEndLine());
+        }
         String instruction = switch (action) {
-            case "REFACTOR" -> "Refactor the selected code. Return ONLY the improved code block.";
-            case "OPTIMIZE" -> "Optimize the selected code for performance/readability. Return ONLY the code.";
+            case "REFACTOR" -> rangeHint + "Refactor the selected code. Return ONLY the improved code for the selection, no explanation.";
+            case "OPTIMIZE" -> rangeHint + "Optimize the selected code. Return ONLY the optimized code for the selection.";
             case "TEST" -> "Generate unit tests for the selected code. Return ONLY test code.";
             default -> "Explain the selected code clearly in Vietnamese. Plain text only, no markdown.";
         };
+        String pathNote = request.getSelectedFilePath() != null
+                ? "File: " + request.getSelectedFilePath() + "\n" : "";
         String response = callAi(user, request.getModel(), """
                 %s
-
+                %s
                 File context:
                 %s
 
@@ -89,7 +96,7 @@ public class IdeAiService {
                 ```
                 %s
                 ```
-                """.formatted(instruction, fileCtx, request.getSelectedCode()));
+                """.formatted(instruction, pathNote, fileCtx, request.getSelectedCode()));
         return IdeChatResponse.builder().response(response).build();
     }
 
@@ -155,25 +162,56 @@ public class IdeAiService {
         String instruction = request.getMessage() != null && !request.getMessage().isBlank()
                 ? request.getMessage()
                 : "Tự động phát hiện và sửa bug, lỗi logic, security và code smell.";
-        String raw = callAi(user, request.getModel(), """
-                You are an auto-fix engine in an IDE.
-                Analyze the codebase context and fix issues: bugs, null safety, security, performance, style.
-                User instruction: %s
 
-                Return ONLY a JSON array (no markdown) with objects:
-                [{"path":"relative/path","content":"full corrected file content","create":false}]
+        boolean hasSelection = request.getStartLine() != null && request.getEndLine() != null
+                && request.getSelectedCode() != null && !request.getSelectedCode().isBlank();
+        String filePath = request.getSelectedFilePath() != null ? request.getSelectedFilePath() : "active-file";
 
-                Only include files that actually need changes. Use exact relative paths from the project.
-                If a file is new, set "create": true.
+        String raw;
+        if (hasSelection) {
+            raw = callAi(user, request.getModel(), """
+                    You are an auto-fix engine in an IDE.
+                    CRITICAL: User selected ONLY lines %d-%d in file "%s".
+                    Fix ONLY that selected code. Do NOT rewrite the entire file.
+                    User instruction: %s
 
-                Context:
-                %s
-                """.formatted(instruction, context));
+                    Return ONLY a JSON array (no markdown) with exactly one object:
+                    [{"path":"%s","content":"corrected code for the selection ONLY — same number of lines as selected unless user asks otherwise","partial":true,"create":false}]
+                    Do NOT include startLine/endLine in JSON. Do NOT include code outside the selection (no extra fields, no closing brace).
+
+                    Selected code to fix:
+                    ```
+                    %s
+                    ```
+
+                    Surrounding file context (reference only — do not return full file):
+                    %s
+                    """.formatted(
+                    request.getStartLine(), request.getEndLine(), filePath, instruction,
+                    filePath,
+                    request.getSelectedCode(), context));
+        } else {
+            raw = callAi(user, request.getModel(), """
+                    You are an auto-fix engine in an IDE.
+                    Analyze the codebase context and fix issues: bugs, null safety, security, performance, style.
+                    User instruction: %s
+
+                    Return ONLY a JSON array (no markdown) with objects:
+                    [{"path":"relative/path","content":"full corrected file content","create":false}]
+
+                    Only include files that actually need changes. Use exact relative paths from the project.
+                    If a file is new, set "create": true.
+
+                    Context:
+                    %s
+                    """.formatted(instruction, context));
+        }
 
         List<IdeFileEditDto> edits = parseEdits(raw);
         String summary = edits.isEmpty()
-                ? "Không phát hiện vấn đề cần sửa trong phạm vi context."
-                : "Tự sửa " + edits.size() + " file: " + edits.stream().map(IdeFileEditDto::getPath).limit(5).toList();
+                ? (hasSelection ? "Không phát hiện vấn đề trong đoạn đã chọn." : "Không phát hiện vấn đề cần sửa trong phạm vi context.")
+                : (hasSelection ? "Đã sửa đoạn dòng " + request.getStartLine() + "-" + request.getEndLine() + " trong " + filePath
+                    : "Tự sửa " + edits.size() + " file: " + edits.stream().map(IdeFileEditDto::getPath).limit(5).toList());
         return IdeMultiEditResponse.builder().summary(summary).edits(edits).build();
     }
 
