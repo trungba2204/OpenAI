@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { GitConnectRequest, GitConnection, GitSyncResponse } from '../models/ide';
+import { GitConnectRequest, GitConnection, GitRepoSuggest, GitStatus, GitSyncResponse } from '../models/ide';
 
 @Injectable({ providedIn: 'root' })
 export class GitService {
@@ -12,6 +12,14 @@ export class GitService {
 
   getConnection(projectId: number): Observable<GitConnection> {
     return this.http.get<GitConnection>(`${this.base}/${projectId}`);
+  }
+
+  getStatus(projectId: number): Observable<GitStatus> {
+    return this.http.get<GitStatus>(`${this.base}/${projectId}/status`);
+  }
+
+  suggestRepo(projectId: number): Observable<GitRepoSuggest> {
+    return this.http.get<GitRepoSuggest>(`${this.base}/${projectId}/suggest`);
   }
 
   connect(request: GitConnectRequest): Observable<GitConnection> {

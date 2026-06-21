@@ -12,7 +12,7 @@ import { GitService } from '../../../core/services/git.service';
 import { ChatService } from '../../../core/services/chat.service';
 import { AiModel, AiModelInfo } from '../../../core/models';
 import {
-  ContextScope, FileTreeNode, GitConnection, IdeAgentResponse,
+  ContextScope, FileTreeNode, GitConnection, GitRepoSuggest, GitStatus, IdeAgentResponse,
   IdeChatMessage, IdeFileEdit, IdeSearchResult, IdeSelectionContext, InlineAction, Project
 } from '../../../core/models/ide';
 import { forkJoin, map, Observable, of } from 'rxjs';
@@ -162,6 +162,14 @@ interface VisibleTreeNode extends FileTreeNode {
             {{ indexing() ? 'Đang index...' : '📇 Index' }}
           </button>
           <button type="button" class="feature-btn feature-btn--sm" (click)="setRightPanel('git')">Git</button>
+          <button
+            type="button"
+            class="feature-btn feature-btn--sm feature-btn--primary"
+            (click)="commitAndPushGit()"
+            [disabled]="gitLoading()"
+            title="Tự tạo repo GitHub (nếu cần), commit và push">
+            ⬆ GitHub
+          </button>
           <button type="button" class="feature-btn feature-btn--sm" (click)="setRightPanel('search')">Search</button>
           <button type="button" class="feature-btn feature-btn--sm" (click)="setRightPanel('chat')">Chat</button>
           <button type="button" class="feature-btn feature-btn--sm" (click)="setLeftPanel('extensions')" title="Extensions ngôn ngữ">🧩</button>
@@ -337,26 +345,108 @@ interface VisibleTreeNode extends FileTreeNode {
         @if (rightPanel() === 'git') {
           <div class="ide-git-panel">
             @if (gitConnection()?.connected) {
-              <p class="ide-git-status ide-git-status--ok">✓ Đã kết nối {{ gitConnection()?.remoteUrl }}</p>
-              <p class="ide-git-meta">Branch: {{ gitConnection()?.branch }}</p>
+              <div class="ide-git-summary">
+                <p class="ide-git-status ide-git-status--ok">✓ Đã kết nối GitHub</p>
+                <p class="ide-git-meta">{{ gitConnection()?.remoteUrl }}</p>
+                <p class="ide-git-meta">Branch: <strong>{{ gitStatus()?.branch || gitConnection()?.branch }}</strong></p>
+                @if (gitConnection()?.lastSyncAt) {
+                  <p class="ide-git-meta">Lần sync: {{ gitConnection()?.lastSyncAt }}</p>
+                }
+              </div>
+
+              @if (gitStatus(); as status) {
+                @if (status.changedFiles.length || status.untrackedFiles.length) {
+                  <div class="ide-git-changes">
+                    <p class="ide-git-changes__title">Thay đổi chưa commit ({{ status.changedFiles.length + status.untrackedFiles.length }})</p>
+                    <ul class="ide-git-changes__list">
+                      @for (f of status.changedFiles; track f) {
+                        <li class="ide-git-changes__item ide-git-changes__item--modified">M {{ f }}</li>
+                      }
+                      @for (f of status.untrackedFiles; track f) {
+                        <li class="ide-git-changes__item ide-git-changes__item--new">+ {{ f }}</li>
+                      }
+                    </ul>
+                  </div>
+                } @else {
+                  <p class="ide-git-meta">Không có thay đổi local — sẵn sàng push nếu có commit chưa đẩy.</p>
+                }
+              }
+
+              <label>Commit message</label>
+              <textarea
+                class="ide-git-commit-input"
+                [(ngModel)]="gitCommitMessage"
+                rows="2"
+                placeholder="feat: mô tả thay đổi..."></textarea>
+              <button
+                type="button"
+                class="feature-btn feature-btn--sm"
+                (click)="suggestGitCommitMessage()"
+                [disabled]="gitLoading() || aiLoading()">
+                ✨ AI gợi ý
+              </button>
+
+              <div class="ide-git-actions">
+                <button type="button" class="feature-btn feature-btn--sm" (click)="refreshGitStatus()" [disabled]="gitLoading()">↻ Làm mới</button>
+                <button type="button" class="feature-btn feature-btn--sm" (click)="pullGit()" [disabled]="gitLoading()">↓ Pull</button>
+                <button
+                  type="button"
+                  class="feature-btn feature-btn--sm feature-btn--primary"
+                  (click)="commitAndPushGit()"
+                  [disabled]="gitLoading()">
+                  ↑ Commit &amp; Push
+                </button>
+              </div>
             } @else {
-              <p class="ide-git-status">Chưa kết nối Git remote</p>
+              <p class="ide-git-status">IDE tự tạo repo GitHub theo tên project</p>
+              @if (gitRepoSuggest(); as suggest) {
+                <p class="ide-git-meta">Project: <strong>{{ suggest.projectName }}</strong></p>
+                <label>Tên repo (tự đặt)</label>
+                <input type="text" [(ngModel)]="gitRepoName" [placeholder]="suggest.repoName" />
+                <p class="ide-git-hint">Sẽ tạo: <code>github.com/&lt;user&gt;/{{ gitRepoName || suggest.repoName }}</code></p>
+              }
+              <label>Branch</label>
+              <input type="text" [(ngModel)]="gitBranch" placeholder="main" />
+              <label class="ide-git-checkbox">
+                <input type="checkbox" [(ngModel)]="gitPrivateRepo" />
+                Repo private
+              </label>
+              <label>Personal Access Token</label>
+              <input type="password" [(ngModel)]="gitToken" placeholder="ghp_xxxxxxxx" />
+              <p class="ide-git-hint">Token cần quyền <code>repo</code>. GitHub → Settings → Developer settings → Personal access tokens.</p>
+              <div class="ide-git-actions">
+                <button type="button" class="feature-btn feature-btn--sm feature-btn--primary" (click)="connectGit()" [disabled]="gitLoading()">
+                  {{ gitLoading() ? 'Đang tạo repo...' : 'Tạo repo & Kết nối' }}
+                </button>
+                <button type="button" class="feature-btn feature-btn--sm feature-btn--primary" (click)="commitAndPushGit()" [disabled]="gitLoading()">
+                  Tạo repo & Push luôn
+                </button>
+              </div>
             }
-            <label>Remote URL</label>
-            <input type="text" [(ngModel)]="gitRemoteUrl" placeholder="https://github.com/user/repo.git" />
-            <label>Branch</label>
-            <input type="text" [(ngModel)]="gitBranch" placeholder="main" />
-            <label>Username</label>
-            <input type="text" [(ngModel)]="gitUsername" />
-            <label>Access Token</label>
-            <input type="password" [(ngModel)]="gitToken" placeholder="ghp_..." />
-            <div class="ide-git-actions">
-              <button type="button" class="feature-btn feature-btn--sm feature-btn--primary" (click)="connectGit()" [disabled]="gitLoading()">Kết nối</button>
-              <button type="button" class="feature-btn feature-btn--sm" (click)="pullGit()" [disabled]="gitLoading()">Pull</button>
-              <button type="button" class="feature-btn feature-btn--sm" (click)="pushGit()" [disabled]="gitLoading()">Push</button>
-            </div>
+
+            @if (gitConnection()?.connected) {
+              <details class="ide-git-settings">
+                <summary>Cài đặt nâng cao (URL thủ công)</summary>
+                <label>Remote URL (để trống = tự tạo repo)</label>
+                <input type="text" [(ngModel)]="gitRemoteUrl" placeholder="https://github.com/ten-ban/ten-repo" />
+                <label>Tên repo tùy chỉnh</label>
+                <input type="text" [(ngModel)]="gitRepoName" placeholder="my-project-1" />
+                <label>Branch</label>
+                <input type="text" [(ngModel)]="gitBranch" placeholder="main" />
+                <label>GitHub Username (tùy chọn)</label>
+                <input type="text" [(ngModel)]="gitUsername" />
+                <label>Access Token</label>
+                <input type="password" [(ngModel)]="gitToken" placeholder="ghp_..." />
+                <label class="ide-git-checkbox">
+                  <input type="checkbox" [(ngModel)]="gitPrivateRepo" />
+                  Repo private
+                </label>
+                <button type="button" class="feature-btn feature-btn--sm" (click)="connectGit()" [disabled]="gitLoading()">Cập nhật kết nối</button>
+              </details>
+            }
+
             @if (gitMessage()) {
-              <p class="ide-git-message">{{ gitMessage() }}</p>
+              <p class="ide-git-message" [class.ide-git-message--ok]="gitMessageOk()">{{ gitMessage() }}</p>
             }
           </div>
         }
@@ -515,8 +605,14 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   searchResults = signal<IdeSearchResult[]>([]);
   searchSummary = signal('');
   gitConnection = signal<GitConnection | null>(null);
+  gitStatus = signal<GitStatus | null>(null);
+  gitRepoSuggest = signal<GitRepoSuggest | null>(null);
   gitLoading = signal(false);
   gitMessage = signal('');
+  gitMessageOk = signal(false);
+  gitCommitMessage = '';
+  gitRepoName = '';
+  gitPrivateRepo = false;
   gitRemoteUrl = '';
   gitBranch = 'main';
   gitUsername = '';
@@ -528,6 +624,7 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.projectService.get(this.projectId).subscribe(p => this.project.set(p));
     this.loadTree();
     this.loadGitConnection();
+    this.loadGitRepoSuggest();
     this.loadAutoFixMode();
     this.chatService.getModels().subscribe({
       next: m => this.models.set(m),
@@ -615,6 +712,12 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
 
   setRightPanel(panel: RightPanel): void {
     this.rightPanel.set(panel);
+    if (panel === 'git') {
+      this.loadGitRepoSuggest();
+      if (this.gitConnection()?.connected) {
+        this.refreshGitStatus();
+      }
+    }
   }
 
   setLeftPanel(panel: LeftPanel): void {
@@ -951,8 +1054,28 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
         if (conn.remoteUrl) this.gitRemoteUrl = conn.remoteUrl;
         if (conn.branch) this.gitBranch = conn.branch;
         if (conn.username) this.gitUsername = conn.username;
+        if (conn.connected) this.refreshGitStatus();
       },
       error: () => this.gitConnection.set(null)
+    });
+  }
+
+  loadGitRepoSuggest(): void {
+    this.gitService.suggestRepo(this.projectId).subscribe({
+      next: suggest => {
+        this.gitRepoSuggest.set(suggest);
+        if (!this.gitRepoName.trim()) {
+          this.gitRepoName = suggest.repoName;
+        }
+      }
+    });
+  }
+
+  refreshGitStatus(): void {
+    if (!this.gitConnection()?.connected) return;
+    this.gitService.getStatus(this.projectId).subscribe({
+      next: status => this.gitStatus.set(status),
+      error: () => this.gitStatus.set(null)
     });
   }
 
@@ -1427,23 +1550,56 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
-  connectGit(): void {
+  connectGit(onSuccess?: () => void): void {
+    if (!this.gitToken.trim()) {
+      this.gitMessage.set('Nhập GitHub Personal Access Token (ghp_...).');
+      this.gitMessageOk.set(false);
+      return;
+    }
+
+    const manualUrl = this.gitRemoteUrl.trim();
+    if (manualUrl) {
+      const urlError = this.validateGitRemoteUrl(manualUrl);
+      if (urlError) {
+        this.gitMessage.set(urlError);
+        this.gitMessageOk.set(false);
+        return;
+      }
+    }
+
     this.gitLoading.set(true);
+    this.gitMessage.set('');
+    this.gitMessageOk.set(false);
     this.gitService.connect({
       projectId: this.projectId,
       provider: 'github',
-      remoteUrl: this.gitRemoteUrl,
       branch: this.gitBranch,
-      username: this.gitUsername,
-      accessToken: this.gitToken
+      accessToken: this.gitToken,
+      autoCreateRepo: !manualUrl,
+      repoName: this.gitRepoName.trim() || undefined,
+      privateRepo: this.gitPrivateRepo,
+      remoteUrl: manualUrl || undefined,
+      username: this.gitUsername.trim() || undefined
     }).subscribe({
       next: conn => {
         this.gitConnection.set(conn);
-        this.gitMessage.set('Đã kết nối Git.');
+        if (conn.remoteUrl) this.gitRemoteUrl = conn.remoteUrl;
+        if (conn.username) this.gitUsername = conn.username;
+        if (conn.repoName) this.gitRepoName = conn.repoName;
+        this.gitMessage.set(
+          conn.remoteUrl
+            ? `Đã tạo/kết nối repo: ${conn.remoteUrl}`
+            : 'Đã kết nối GitHub.'
+        );
+        this.gitMessageOk.set(true);
         this.gitLoading.set(false);
+        this.setRightPanel('git');
+        this.refreshGitStatus();
+        onSuccess?.();
       },
       error: err => {
         this.gitMessage.set(err?.error?.message ?? 'Lỗi kết nối Git.');
+        this.gitMessageOk.set(false);
         this.gitLoading.set(false);
       }
     });
@@ -1451,48 +1607,128 @@ export class ProjectEditorComponent implements OnInit, AfterViewInit, OnDestroy 
 
   pullGit(): void {
     this.gitLoading.set(true);
+    this.gitMessage.set('');
+    this.gitMessageOk.set(false);
     this.gitService.pull(this.projectId).subscribe({
       next: res => {
-        this.gitMessage.set(res.message);
+        this.gitMessage.set(res.message || 'Pull thành công.');
+        this.gitMessageOk.set(res.success);
         this.gitLoading.set(false);
-        if (res.success) this.loadTree();
+        if (res.success) {
+          this.loadTree();
+          this.refreshGitStatus();
+        }
       },
       error: err => {
         this.gitMessage.set(err?.error?.message ?? 'Lỗi pull.');
+        this.gitMessageOk.set(false);
         this.gitLoading.set(false);
       }
     });
   }
 
-  pushGit(): void {
+  suggestGitCommitMessage(): void {
+    const status = this.gitStatus();
+    const summary = status
+      ? [
+        ...(status.changedFiles ?? []).map(f => `M ${f}`),
+        ...(status.untrackedFiles ?? []).map(f => `+ ${f}`),
+        status.diffStat ?? ''
+      ].filter(Boolean).join('\n')
+      : 'IDE code changes';
+    this.aiLoading.set(true);
+    this.ideAiService.commitMessage(this.projectId, summary, this.selectedModel).subscribe({
+      next: res => {
+        this.gitCommitMessage = res.response?.trim() || '';
+        this.aiLoading.set(false);
+      },
+      error: () => this.aiLoading.set(false)
+    });
+  }
+
+  commitAndPushGit(): void {
+    if (!this.gitConnection()?.connected) {
+      this.setRightPanel('git');
+      if (!this.gitToken.trim()) {
+        this.gitMessage.set('Nhập token GitHub — IDE sẽ tự tạo repo theo tên project rồi push.');
+        this.gitMessageOk.set(false);
+        return;
+      }
+      this.connectGit(() => this.executePush());
+      return;
+    }
+    this.executePush();
+  }
+
+  private executePush(): void {
     this.gitLoading.set(true);
-    this.ideAiService.commitMessage(this.projectId, undefined, this.selectedModel).subscribe({
-      next: msgRes => {
-        const msg = msgRes.response?.trim() || 'AI IDE update';
+    this.gitMessage.set('');
+    this.gitMessageOk.set(false);
+    this.setRightPanel('git');
+
+    this.saveAllDirtyFiles().subscribe({
+      next: () => {
+        const msg = this.gitCommitMessage.trim() || undefined;
         this.gitService.push(this.projectId, msg).subscribe({
           next: res => {
-            this.gitMessage.set(res.message);
+            const detail = res.commitMessage ? `Commit: ${res.commitMessage}` : '';
+            this.gitMessage.set([detail, res.message].filter(Boolean).join('\n'));
+            this.gitMessageOk.set(res.success);
+            if (res.commitMessage) this.gitCommitMessage = res.commitMessage;
             this.gitLoading.set(false);
+            this.refreshGitStatus();
+            this.loadGitConnection();
           },
           error: err => {
-            this.gitMessage.set(err?.error?.message ?? 'Lỗi push.');
+            this.gitMessage.set(err?.error?.message ?? 'Lỗi push lên GitHub.');
+            this.gitMessageOk.set(false);
             this.gitLoading.set(false);
+            this.refreshGitStatus();
           }
         });
       },
       error: () => {
-        this.gitService.push(this.projectId, 'AI IDE update').subscribe({
-          next: res => {
-            this.gitMessage.set(res.message);
-            this.gitLoading.set(false);
-          },
-          error: err => {
-            this.gitMessage.set(err?.error?.message ?? 'Lỗi push.');
-            this.gitLoading.set(false);
-          }
-        });
+        this.gitMessage.set('Lỗi khi lưu file trước khi push.');
+        this.gitMessageOk.set(false);
+        this.gitLoading.set(false);
       }
     });
+  }
+
+  private validateGitRemoteUrl(raw: string): string | null {
+    const url = raw.trim();
+    if (!url) {
+      return 'Remote URL không được để trống.';
+    }
+    const match = url.replace(/^https?:\/\//, '').match(/^github\.com\/([^/]+)\/([^/]+)/i);
+    if (!match || !match[1] || !match[2]) {
+      return 'Remote URL phải đầy đủ dạng: https://github.com/<ten-ban>/<ten-repo> (ví dụ: https://github.com/quanden/my-app).';
+    }
+    return null;
+  }
+
+  private saveAllDirtyFiles(): Observable<void> {
+    const dirtyTabs = this.tabs().filter(t => t.dirty);
+    if (!dirtyTabs.length) return of(undefined);
+
+    const saves = dirtyTabs.map(tab => {
+      const content = tab.fileId === this.activeFileId() && this.editor
+        ? this.editor.getValue()
+        : tab.content;
+      return this.projectService.saveFile(tab.fileId, content).pipe(
+        map(file => {
+          this.tabs.update(list => list.map(t =>
+            t.fileId === tab.fileId ? { ...t, content: file.content, dirty: false } : t
+          ));
+          if (this.activeFileId() === tab.fileId) {
+            this.activeTab.update(t => t ? { ...t, content: file.content, dirty: false } : t);
+          }
+          return file;
+        })
+      );
+    });
+
+    return forkJoin(saves).pipe(map(() => undefined));
   }
 
   private initEditor(tab: OpenTab | null): void {

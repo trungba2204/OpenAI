@@ -5,18 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GitConnectionDto {
-    private Long id;
-    private Long projectId;
-    private String provider;
-    private String remoteUrl;
-    private String branch;
-    private String username;
-    private String repoName;
+public class GitStatusDto {
     private boolean connected;
+    private String branch;
+    private boolean clean;
+    private List<String> changedFiles;
+    private List<String> untrackedFiles;
+    private String diffStat;
     private String lastSyncAt;
 }

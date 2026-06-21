@@ -95,6 +95,16 @@ export interface IdeAgentResponse {
   edits: IdeFileEdit[];
 }
 
+export interface GitStatus {
+  connected: boolean;
+  branch: string;
+  clean: boolean;
+  changedFiles: string[];
+  untrackedFiles: string[];
+  diffStat?: string;
+  lastSyncAt?: string;
+}
+
 export interface GitConnection {
   id: number;
   projectId: number;
@@ -102,17 +112,27 @@ export interface GitConnection {
   remoteUrl: string;
   branch: string;
   username: string;
+  repoName?: string;
   connected: boolean;
   lastSyncAt: string;
+}
+
+export interface GitRepoSuggest {
+  repoName: string;
+  projectName: string;
+  previewUrl: string;
 }
 
 export interface GitConnectRequest {
   projectId: number;
   provider: string;
-  remoteUrl: string;
+  remoteUrl?: string;
   branch: string;
-  username: string;
+  username?: string;
   accessToken: string;
+  autoCreateRepo?: boolean;
+  repoName?: string;
+  privateRepo?: boolean;
 }
 
 export interface GitSyncResponse {
