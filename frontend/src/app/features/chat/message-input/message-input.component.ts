@@ -215,6 +215,12 @@ export class MessageInputComponent {
     this.pendingEnterSend = false;
   }
 
+  applyText(value: string): void {
+    this.text = value;
+    this.syncTextareaValue(value);
+    this.messageInput()?.nativeElement?.focus();
+  }
+
   private readTextareaValue(): string {
     return this.messageInput()?.nativeElement?.value ?? this.text;
   }

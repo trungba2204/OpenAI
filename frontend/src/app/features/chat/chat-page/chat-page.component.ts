@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { switchMap, of, map } from 'rxjs';
 import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
@@ -29,7 +29,7 @@ import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptT
           <select class="chat-select" (change)="onPromptSelect($event)">
             <option value="">📚 Prompt...</option>
             @for (p of prompts(); track p.id) {
-              <option [value]="p.content">{{ p.title }}</option>
+              <option [value]="p.id">{{ p.title }}</option>
             }
           </select>
 
@@ -82,6 +82,8 @@ export class ChatPageComponent implements OnInit {
   private documentService = inject(DocumentService);
   private promptService = inject(PromptService);
   private agentService = inject(AgentService);
+
+  private messageInput = viewChild(MessageInputComponent);
 
   conversations = signal<Conversation[]>([]);
   messages = signal<Message[]>([]);
@@ -343,10 +345,15 @@ export class ChatPageComponent implements OnInit {
 
   onPromptSelect(event: Event): void {
     const select = event.target as HTMLSelectElement;
-    if (select.value) {
-      this.chatService.pendingPrompt.set(select.value);
-      select.value = '';
-    }
+    const id = Number(select.value);
+    select.value = '';
+    if (!id) return;
+
+    const prompt = this.prompts().find(p => p.id === id);
+    if (!prompt) return;
+
+    this.messageInput()?.applyText(prompt.content);
+    this.chatService.pendingPrompt.set(null);
   }
 
   toggleAgent(event: Event): void {

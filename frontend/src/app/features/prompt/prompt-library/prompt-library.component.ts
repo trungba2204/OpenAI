@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { PromptService } from '../../../core/services/prompt.service';
 import { ChatService } from '../../../core/services/chat.service';
@@ -56,6 +57,7 @@ import { PromptTemplate } from '../../../core/models';
 export class PromptLibraryComponent implements OnInit {
   private promptService = inject(PromptService);
   private chatService = inject(ChatService);
+  private router = inject(Router);
 
   prompts = signal<PromptTemplate[]>([]);
   showForm = false;
@@ -86,6 +88,6 @@ export class PromptLibraryComponent implements OnInit {
   }
 
   goChat(): void {
-    window.location.href = '/chat';
+    this.router.navigate(['/chat']);
   }
 }
