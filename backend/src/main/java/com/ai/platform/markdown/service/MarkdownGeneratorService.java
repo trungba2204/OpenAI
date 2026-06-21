@@ -37,7 +37,7 @@ public class MarkdownGeneratorService {
         String input = resolveInput(user, request);
 
         String markdown = modelRouterService.callSimple(
-                AiModel.GROQ_LLAMA_8B,
+                AiModel.GROQ_LLAMA_70B,
                 """
                         Bạn là chuyên gia viết tài liệu kỹ thuật. Hãy tạo nội dung Markdown có cấu trúc rõ ràng
                         với các heading (#, ##, ###), danh sách, bảng khi cần. Chỉ trả về Markdown thuần, không bọc code fence.""",

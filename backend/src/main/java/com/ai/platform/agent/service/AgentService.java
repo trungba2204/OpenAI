@@ -92,7 +92,7 @@ public class AgentService {
         Conversation conversation = Conversation.builder()
                 .user(user)
                 .title("Agent Chat")
-                .model(request.getModel() != null ? request.getModel() : AiModel.GROQ_LLAMA_8B)
+                .model(request.getModel() != null ? request.getModel() : AiModel.GROQ_LLAMA_70B)
                 .build();
         return conversationRepository.save(conversation);
     }

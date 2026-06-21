@@ -51,7 +51,7 @@ public class ChatService {
         Conversation conversation = Conversation.builder()
                 .user(user)
                 .title(request.getTitle() != null ? request.getTitle() : "New Chat")
-                .model(request.getModel() != null ? request.getModel() : AiModel.GROQ_LLAMA_8B)
+                .model(request.getModel() != null ? request.getModel() : AiModel.GROQ_LLAMA_70B)
                 .build();
         return toConversationDto(conversationRepository.save(conversation));
     }
@@ -132,7 +132,7 @@ public class ChatService {
         Conversation conversation = Conversation.builder()
                 .user(user)
                 .title(truncate(request.getContent(), 50))
-                .model(request.getModel() != null ? request.getModel() : AiModel.GROQ_LLAMA_8B)
+                .model(request.getModel() != null ? request.getModel() : AiModel.GROQ_LLAMA_70B)
                 .build();
         return conversationRepository.save(conversation);
     }

@@ -45,7 +45,7 @@ public class PptGeneratorService {
         }
 
         String outlineJson = modelRouterService.callSimple(
-                AiModel.GROQ_LLAMA_8B,
+                AiModel.GROQ_LLAMA_70B,
                 """
                         Tạo outline cho PowerPoint. Trả về JSON array duy nhất, không markdown fence:
                         [{"title":"Slide title","bullets":["point1","point2"]}]

@@ -5,14 +5,16 @@ import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.com
 import { MessageListComponent } from '../message-list/message-list.component';
 import { MessageInputComponent, ChatSendPayload } from '../message-input/message-input.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { AgentRunsPanelComponent } from '../agent-runs-panel/agent-runs-panel.component';
 import { ChatService } from '../../../core/services/chat.service';
+import { AgentService } from '../../../core/services/agent.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { PromptService } from '../../../core/services/prompt.service';
-import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptTemplate } from '../../../core/models';
+import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptTemplate, AgentRun } from '../../../core/models';
 
 @Component({
   selector: 'app-chat-page',
-  imports: [FormsModule, SidebarComponent, MessageListComponent, MessageInputComponent, ConfirmDialogComponent],
+  imports: [FormsModule, SidebarComponent, MessageListComponent, MessageInputComponent, ConfirmDialogComponent, AgentRunsPanelComponent],
   template: `
     <div class="chat-layout">
       <app-sidebar
@@ -30,13 +32,29 @@ import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptT
               <option [value]="p.content">{{ p.title }}</option>
             }
           </select>
+
+          <label class="chat-header__agent">
+            <input
+              type="checkbox"
+              [checked]="chatService.agentMode()"
+              (change)="toggleAgent($event)" />
+            Agent Mode
+          </label>
         </header>
 
-        <app-message-list
-          [messages]="messages()"
-          [streaming]="streaming()"
-          [streamContent]="streamContent()"
-          (regenerateMessage)="regenerateAt($event)" />
+        <div class="chat-content" [class.chat-content--agent]="chatService.agentMode()">
+          <app-message-list
+            [messages]="messages()"
+            [streaming]="streaming()"
+            [streamContent]="streamContent()"
+            (regenerateMessage)="regenerateAt($event)" />
+
+          @if (chatService.agentMode()) {
+            <app-agent-runs-panel
+              [runs]="agentRuns()"
+              (refresh)="loadAgentRuns()" />
+          }
+        </div>
 
         <app-message-input
           [disabled]="streaming()"
@@ -63,15 +81,17 @@ export class ChatPageComponent implements OnInit {
   chatService = inject(ChatService);
   private documentService = inject(DocumentService);
   private promptService = inject(PromptService);
+  private agentService = inject(AgentService);
 
   conversations = signal<Conversation[]>([]);
   messages = signal<Message[]>([]);
   models = signal<AiModelInfo[]>([]);
   prompts = signal<PromptTemplate[]>([]);
+  agentRuns = signal<AgentRun[]>([]);
   activeConversationId = signal<number | null>(null);
   streaming = signal(false);
   streamContent = signal('');
-  selectedModel: AiModel = 'GROQ_LLAMA_8B';
+  selectedModel: AiModel = 'GROQ_LLAMA_70B';
   deleteDialogOpen = signal(false);
   deleteTargetId = signal<number | null>(null);
   deleteError = signal<string | null>(null);
@@ -99,12 +119,13 @@ export class ChatPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.chatService.getModels().subscribe({
-      next: m => this.models.set(m.length ? m : this.chatService.getDefaultModels()),
+      next: m => this.models.set(m),
       error: () => this.models.set(this.chatService.getDefaultModels())
     });
     this.promptService.list().subscribe(p => this.prompts.set(p));
     this.loadConversations();
-    this.selectedModel = this.chatService.selectedModel();
+    this.selectedModel = this.chatService.sanitizeModel(this.chatService.selectedModel());
+    this.chatService.selectedModel.set(this.selectedModel);
   }
 
   loadConversations(): void {
@@ -121,8 +142,8 @@ export class ChatPageComponent implements OnInit {
     this.activeConversationId.set(id);
     const conv = this.conversations().find(c => c.id === id);
     if (conv) {
-      this.selectedModel = conv.model;
-      this.chatService.selectedModel.set(conv.model);
+      this.selectedModel = this.chatService.sanitizeModel(conv.model);
+      this.chatService.selectedModel.set(this.selectedModel);
     }
     this.chatService.getMessages(id).subscribe(msgs => this.messages.set(msgs));
   }
@@ -253,6 +274,18 @@ export class ChatPageComponent implements OnInit {
     this.streaming.set(true);
     this.streamContent.set('');
 
+    if (this.chatService.agentMode() && !attachment) {
+      this.chatService.agentChat(this.activeConversationId(), content, this.selectedModel).subscribe({
+        next: () => {
+          this.streaming.set(false);
+          this.syncAfterSend();
+          this.loadAgentRuns();
+        },
+        error: () => this.streaming.set(false)
+      });
+      return;
+    }
+
     this.chatService.streamMessage(
       this.activeConversationId(),
       content,
@@ -314,5 +347,17 @@ export class ChatPageComponent implements OnInit {
       this.chatService.pendingPrompt.set(select.value);
       select.value = '';
     }
+  }
+
+  toggleAgent(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.chatService.agentMode.set(checked);
+    if (checked) {
+      this.loadAgentRuns();
+    }
+  }
+
+  loadAgentRuns(): void {
+    this.agentService.getRuns().subscribe(r => this.agentRuns.set(r));
   }
 }

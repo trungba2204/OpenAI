@@ -105,12 +105,11 @@ public final class AiErrorMapper {
                     + "Hệ thống đã thử chuyển sang provider khác. Hãy:\n"
                     + "- Đợi **1–2 phút** rồi thử lại\n"
                     + "- Thêm **Groq API key** miễn phí tại [console.groq.com](https://console.groq.com)\n"
-                    + "- Hoặc dùng key Gemini `AIza...` từ [Google AI Studio](https://aistudio.google.com/apikey)";
+                    + "- Hoặc thêm **OpenRouter API key** tại [openrouter.ai](https://openrouter.ai)";
             case 401, 403 -> "⚠️ **API key không hợp lệ**\n\n"
                     + "Cấu hình trong `application-local.yml`:\n"
                     + "- Groq: `app.ai.providers.groq.api-key` (dạng `gsk_...`)\n"
-                    + "- OpenRouter: `app.ai.providers.openrouter.api-key` (dạng `sk-or-v1_...`)\n"
-                    + "- Gemini: `app.ai.providers.gemini.api-key` (dạng `AIza...`)";
+                    + "- OpenRouter: `app.ai.providers.openrouter.api-key` (dạng `sk-or-v1_...`)";
             case 404 -> "⚠️ **Model không khả dụng**\n\nThử đổi model khác trong dropdown chat.";
             default -> {
                 if (isNetworkError(e)) {
@@ -118,7 +117,7 @@ public final class AiErrorMapper {
                             + "Hệ thống đã thử chuyển sang provider dự phòng. Nếu vẫn lỗi:\n"
                             + "- Tắt VPN/proxy rồi thử lại\n"
                             + "- Kiểm tra mạng có chặn `api.groq.com` không\n"
-                            + "- Thử đổi sang model **Gemini** trong dropdown chat";
+                            + "- Thử đổi sang model **OpenRouter** trong dropdown chat";
                 }
                 if (code > 0) {
                     yield "⚠️ **Lỗi AI (HTTP " + code + ")** — thử lại sau hoặc đổi model.";

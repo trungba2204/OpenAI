@@ -35,7 +35,7 @@ public class Conversation {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 100)
     @Builder.Default
-    private AiModel model = AiModel.GROQ_LLAMA_8B;
+    private AiModel model = AiModel.GROQ_LLAMA_70B;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

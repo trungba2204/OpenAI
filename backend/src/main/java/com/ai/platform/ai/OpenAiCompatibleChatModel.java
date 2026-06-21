@@ -100,7 +100,7 @@ public class OpenAiCompatibleChatModel implements ChatModel {
     public ChatOptions getDefaultOptions() {
         String model = config.getDefaultModel() != null && !config.getDefaultModel().isBlank()
                 ? config.getDefaultModel()
-                : "llama-3.1-8b-instant";
+                : "llama-3.3-70b-versatile";
         return ChatOptions.builder().model(model).build();
     }
 
@@ -111,7 +111,7 @@ public class OpenAiCompatibleChatModel implements ChatModel {
         if (config.getDefaultModel() != null && !config.getDefaultModel().isBlank()) {
             return config.getDefaultModel();
         }
-        return "llama-3.1-8b-instant";
+        return "llama-3.3-70b-versatile";
     }
 
     private Map<String, Object> buildRequestBody(Prompt prompt, String model, boolean stream) {

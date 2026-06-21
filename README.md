@@ -6,7 +6,7 @@ Nền tảng AI SaaS với Angular 20 + Spring Boot 3.4 + Spring AI 1.0.
 
 - Authentication (JWT + Refresh Token)
 - Chat AI với SSE streaming
-- Multi Model (Gemini Flash — free tier)
+- Multi Model (Groq, OpenRouter)
 - Upload & đọc tài liệu (PDF, DOCX, TXT)
 - Prompt Library
 - Agent Mode với tool calling
@@ -63,25 +63,29 @@ export DB_PASSWORD=your_password
 ./mvnw spring-boot:run
 ```
 
-### API key (Gemini free)
+### API key
 
-Lấy key miễn phí tại [Google AI Studio](https://aistudio.google.com/apikey), rồi thêm vào `application-local.yml`:
+Thêm key vào `application-local.yml` (copy từ `application-local.yml.example`):
 
 ```yaml
-spring:
+app:
   ai:
-    openai:
-      api-key: your-google-api-key
+    providers:
+      groq:
+        api-key: gsk_your_groq_key
+      openrouter:
+        api-key: sk-or-v1_your_openrouter_key
 ```
 
 Hoặc export biến môi trường:
 
 ```bash
-export GOOGLE_API_KEY=your-google-api-key
+export GROQ_API_KEY=your-groq-key
+export OPENROUTER_API_KEY=your-openrouter-key
 export JWT_SECRET=your-long-secret-key
 ```
 
-Chỉ hỗ trợ **2 model miễn phí**: Gemini 2.0 Flash và Gemini 1.5 Flash.
+Hỗ trợ **Groq** (miễn phí) và **OpenRouter** (có model free + trả phí).
 
 Dev profile dùng MySQL tại `localhost:3306/ai_platform`. Flyway tự chạy migration khi khởi động.
 

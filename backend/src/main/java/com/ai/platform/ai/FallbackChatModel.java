@@ -66,7 +66,7 @@ public class FallbackChatModel implements ChatModel {
     private void ensureProviders() {
         if (providers.isEmpty()) {
             throw new IllegalStateException(
-                    "Chưa cấu hình API key. Thêm Groq, OpenRouter hoặc Gemini key vào application-local.yml");
+                    "Chưa cấu hình API key. Thêm Groq hoặc OpenRouter key vào application-local.yml");
         }
     }
 
@@ -104,13 +104,10 @@ public class FallbackChatModel implements ChatModel {
 
     private String fallbackModelFor(OpenAiCompatibleChatModel provider) {
         if ("groq".equalsIgnoreCase(provider.getProviderName())) {
-            return "llama-3.1-8b-instant";
-        }
-        if ("gemini".equalsIgnoreCase(provider.getProviderName())) {
-            return properties.getFallbackModel();
+            return "llama-3.3-70b-versatile";
         }
         if ("openrouter".equalsIgnoreCase(provider.getProviderName())) {
-            return "meta-llama/llama-3.1-8b-instruct:free";
+            return "deepseek/deepseek-chat";
         }
         return properties.getDefaultModel();
     }

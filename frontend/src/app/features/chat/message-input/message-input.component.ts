@@ -98,7 +98,7 @@ export class MessageInputComponent {
   disabled = input(false);
   initialText = input<string | null>(null);
   models = input<AiModelInfo[]>([]);
-  selectedModel = model<AiModel>('GROQ_LLAMA_8B');
+  selectedModel = model<AiModel>('GROQ_LLAMA_70B');
 
   sendMessage = output<ChatSendPayload>();
 

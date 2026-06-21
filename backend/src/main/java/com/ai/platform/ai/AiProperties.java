@@ -12,7 +12,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "app.ai")
 public class AiProperties {
 
-    private String defaultModel = "llama-3.1-8b-instant";
-    private String fallbackModel = "gemini-2.0-flash-lite";
+    private String defaultModel = "llama-3.3-70b-versatile";
+    private String fallbackModel = "llama-3.3-70b-versatile";
     private Map<String, AiProviderConfig> providers = new LinkedHashMap<>();
 }

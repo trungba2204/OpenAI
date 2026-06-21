@@ -1,13 +1,5 @@
 export type AiModel =
-  | 'GROQ_LLAMA_8B'
   | 'GROQ_LLAMA_70B'
-  | 'GROQ_GEMMA'
-  | 'GEMINI_FLASH_LITE'
-  | 'GEMINI_FLASH'
-  | 'GEMINI_15_FLASH'
-  | 'OR_LLAMA_8B_FREE'
-  | 'OR_GEMINI_FLASH_LITE_FREE'
-  | 'OR_QWEN_FREE'
   | 'OR_DEEPSEEK_CHAT'
   | 'OR_GPT4O_MINI';
 

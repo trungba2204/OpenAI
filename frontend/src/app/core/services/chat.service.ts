@@ -5,36 +5,57 @@ import { environment } from '../../../environments/environment';
 import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment } from '../models';
 import { AuthService } from './auth.service';
 
+const UI_MODELS: AiModel[] = [
+  'GROQ_LLAMA_70B',
+  'OR_DEEPSEEK_CHAT',
+  'OR_GPT4O_MINI',
+];
+
 const DEFAULT_MODELS: AiModelInfo[] = [
-  { id: 'GROQ_LLAMA_8B', modelId: 'llama-3.1-8b-instant', displayName: 'Llama 3.1 8B (Free)' },
   { id: 'GROQ_LLAMA_70B', modelId: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B (Free)' },
-  { id: 'GROQ_GEMMA', modelId: 'gemma2-9b-it', displayName: 'Gemma 2 9B (Free)' },
-  { id: 'GEMINI_FLASH_LITE', modelId: 'gemini-2.0-flash-lite', displayName: 'Gemini 2.0 Flash Lite' },
-  { id: 'GEMINI_FLASH', modelId: 'gemini-2.0-flash', displayName: 'Gemini 2.0 Flash' },
-  { id: 'GEMINI_15_FLASH', modelId: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash' },
-  { id: 'OR_LLAMA_8B_FREE', modelId: 'meta-llama/llama-3.1-8b-instruct:free', displayName: 'OR Llama 3.1 8B (Free)' },
-  { id: 'OR_GEMINI_FLASH_LITE_FREE', modelId: 'google/gemini-2.0-flash-lite-preview-02-05:free', displayName: 'OR Gemini 2.0 Flash Lite (Free)' },
-  { id: 'OR_QWEN_FREE', modelId: 'qwen/qwen-2.5-7b-instruct:free', displayName: 'OR Qwen 2.5 7B (Free)' },
   { id: 'OR_DEEPSEEK_CHAT', modelId: 'deepseek/deepseek-chat', displayName: 'OR DeepSeek Chat' },
   { id: 'OR_GPT4O_MINI', modelId: 'openai/gpt-4o-mini', displayName: 'OR GPT-4o Mini' },
 ];
+
+function isGeminiModel(model: { id: string; modelId: string; displayName: string }): boolean {
+  const text = `${model.id} ${model.modelId} ${model.displayName}`.toLowerCase();
+  return text.includes('gemini');
+}
+
+function filterUiModels(models: AiModelInfo[]): AiModelInfo[] {
+  const allowed = new Set<string>(UI_MODELS);
+  return models.filter(model => allowed.has(model.id) && !isGeminiModel(model));
+}
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   private auth = inject(AuthService);
 
-  selectedModel = signal<AiModel>('GROQ_LLAMA_8B');
+  selectedModel = signal<AiModel>('GROQ_LLAMA_70B');
   agentMode = signal(false);
   pendingPrompt = signal<string | null>(null);
 
   constructor(private http: HttpClient) {}
 
   getModels(): Observable<AiModelInfo[]> {
-    return this.http.get<AiModelInfo[]>(`${environment.apiUrl}/models`);
+    return this.http.get<AiModelInfo[]>(`${environment.apiUrl}/models`).pipe(
+      map(models => {
+        const filtered = filterUiModels(models);
+        return filtered.length ? filtered : this.getDefaultModels();
+      })
+    );
   }
 
   getDefaultModels(): AiModelInfo[] {
-    return DEFAULT_MODELS;
+    return filterUiModels(DEFAULT_MODELS);
+  }
+
+  sanitizeModel(model: string | null | undefined): AiModel {
+    const fallback: AiModel = 'GROQ_LLAMA_70B';
+    if (!model || isGeminiModel({ id: model, modelId: model, displayName: model })) {
+      return fallback;
+    }
+    return UI_MODELS.includes(model as AiModel) ? model as AiModel : fallback;
   }
 
   getConversations(): Observable<Conversation[]> {
