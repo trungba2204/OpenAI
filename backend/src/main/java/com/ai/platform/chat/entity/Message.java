@@ -28,6 +28,15 @@ public class Message {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "attachment_filename", length = 500)
+    private String attachmentFilename;
+
+    @Column(name = "attachment_mime_type", length = 100)
+    private String attachmentMimeType;
+
+    @Column(name = "attachment_document_id")
+    private Long attachmentDocumentId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

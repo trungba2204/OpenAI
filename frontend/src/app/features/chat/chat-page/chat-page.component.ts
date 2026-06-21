@@ -8,7 +8,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 import { ChatService } from '../../../core/services/chat.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { PromptService } from '../../../core/services/prompt.service';
-import { AiModel, AiModelInfo, Conversation, Message, PromptTemplate } from '../../../core/models';
+import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptTemplate } from '../../../core/models';
 
 @Component({
   selector: 'app-chat-page',
@@ -30,11 +30,6 @@ import { AiModel, AiModelInfo, Conversation, Message, PromptTemplate } from '../
               <option [value]="p.content">{{ p.title }}</option>
             }
           </select>
-
-          <label class="chat-header__agent">
-            <input type="checkbox" [checked]="chatService.agentMode()" (change)="toggleAgent($event)" />
-            Agent Mode
-          </label>
         </header>
 
         <app-message-list
@@ -174,11 +169,15 @@ export class ChatPageComponent implements OnInit {
     if (!text && !file) return;
 
     const messageText = text || 'Phân tích tài liệu đính kèm và trả lời bằng tiếng Việt.';
-    const displayText = file
-      ? (text ? `${text}\n\n📎 ${file.name}` : `📎 ${file.name}`)
-      : text;
+    const attachment: MessageAttachment | undefined = file
+      ? { filename: file.name, mimeType: file.type || undefined }
+      : undefined;
 
-    this.messages.update(msgs => [...msgs, { role: 'user', content: displayText }]);
+    this.messages.update(msgs => [...msgs, {
+      role: 'user',
+      content: text,
+      attachment
+    }]);
 
     if (file) {
       this.ensureConversationId().pipe(
@@ -187,7 +186,29 @@ export class ChatPageComponent implements OnInit {
           return this.documentService.upload(file, convId);
         })
       ).subscribe({
-        next: () => this.streamReply(messageText),
+        next: doc => {
+          this.messages.update(msgs => {
+            const updated = [...msgs];
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (updated[i].role === 'user' && updated[i].attachment) {
+                updated[i] = {
+                  ...updated[i],
+                  attachment: {
+                    ...updated[i].attachment!,
+                    documentId: doc.id
+                  }
+                };
+                break;
+              }
+            }
+            return updated;
+          });
+          this.streamReply(messageText, {
+            filename: file.name,
+            mimeType: file.type || undefined,
+            documentId: doc.id
+          }, text);
+        },
         error: () => {
           this.messages.update(msgs => [...msgs, {
             role: 'assistant',
@@ -228,22 +249,17 @@ export class ChatPageComponent implements OnInit {
     this.streamReply(userContent);
   }
 
-  private streamReply(content: string): void {
+  private streamReply(content: string, attachment?: MessageAttachment, displayContent?: string): void {
     this.streaming.set(true);
     this.streamContent.set('');
 
-    if (this.chatService.agentMode()) {
-      this.chatService.agentChat(this.activeConversationId(), content, this.selectedModel).subscribe({
-        next: res => {
-          this.streaming.set(false);
-          this.refreshMessagesAfterSend(res.content);
-        },
-        error: () => this.streaming.set(false)
-      });
-      return;
-    }
-
-    this.chatService.streamMessage(this.activeConversationId(), content, this.selectedModel).subscribe({
+    this.chatService.streamMessage(
+      this.activeConversationId(),
+      content,
+      this.selectedModel,
+      attachment,
+      displayContent
+    ).subscribe({
       next: chunk => this.streamContent.update(s => s + chunk),
       complete: () => {
         this.streaming.set(false);
@@ -271,22 +287,24 @@ export class ChatPageComponent implements OnInit {
       const convId = this.activeConversationId() ?? conversations[0]?.id ?? null;
       if (convId) {
         this.activeConversationId.set(convId);
-        this.chatService.getMessages(convId).subscribe(msgs => this.messages.set(msgs));
+        const localSnapshot = this.messages();
+        this.chatService.getMessages(convId).subscribe(msgs =>
+          this.messages.set(this.mergeAttachments(localSnapshot, msgs))
+        );
       }
     });
   }
 
-  private refreshMessagesAfterSend(fallbackContent: string): void {
-    this.chatService.getConversations().subscribe(conversations => {
-      this.conversations.set(conversations);
-      const convId = this.activeConversationId() ?? conversations[0]?.id ?? null;
-      if (convId) {
-        this.activeConversationId.set(convId);
-        this.chatService.getMessages(convId).subscribe(msgs => this.messages.set(msgs));
-      } else if (fallbackContent) {
-        this.messages.update(msgs => [...msgs, { role: 'assistant', content: fallbackContent }]);
+  private mergeAttachments(local: Message[], server: Message[]): Message[] {
+    const localWithFiles = local.filter(m => m.role === 'user' && m.attachment);
+
+    return server.map(serverMsg => {
+      if (serverMsg.attachment || serverMsg.role !== 'user') {
+        return serverMsg;
       }
-      this.loadConversations();
+
+      const matched = localWithFiles.find(m => m.content === serverMsg.content) ?? localWithFiles[0];
+      return matched?.attachment ? { ...serverMsg, attachment: matched.attachment } : serverMsg;
     });
   }
 
@@ -296,9 +314,5 @@ export class ChatPageComponent implements OnInit {
       this.chatService.pendingPrompt.set(select.value);
       select.value = '';
     }
-  }
-
-  toggleAgent(event: Event): void {
-    this.chatService.agentMode.set((event.target as HTMLInputElement).checked);
   }
 }

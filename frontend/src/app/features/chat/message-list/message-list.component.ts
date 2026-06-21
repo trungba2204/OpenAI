@@ -2,10 +2,12 @@ import { Component, input, output, effect, ElementRef, viewChild, signal } from 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 import { MessageActionsComponent } from '../message-actions/message-actions.component';
+import { MessageAttachmentComponent } from '../message-attachment/message-attachment.component';
+import { Message, MessageAttachment } from '../../../core/models';
 
 @Component({
   selector: 'app-message-list',
-  imports: [MessageActionsComponent],
+  imports: [MessageActionsComponent, MessageAttachmentComponent],
   host: {
     class: 'chat-message-list-host'
   },
@@ -29,7 +31,12 @@ import { MessageActionsComponent } from '../message-actions/message-actions.comp
                   @if (msg.role === 'assistant') {
                     <div class="markdown-body" [innerHTML]="renderMarkdown(msg.content)"></div>
                   } @else {
-                    <p>{{ msg.content }}</p>
+                    @if (resolveAttachment(msg); as attachment) {
+                      <app-message-attachment [attachment]="attachment" />
+                    }
+                    @if (msg.content) {
+                      <p [class.chat-msg__text-after-file]="!!resolveAttachment(msg)">{{ msg.content }}</p>
+                    }
                   }
                 </div>
                 @if (msg.role === 'assistant' && !streaming()) {
@@ -78,7 +85,7 @@ import { MessageActionsComponent } from '../message-actions/message-actions.comp
   `
 })
 export class MessageListComponent {
-  messages = input<{ role: string; content: string; id?: number }[]>([]);
+  messages = input<Message[]>([]);
   streaming = input(false);
   streamContent = input('');
 
@@ -105,13 +112,27 @@ export class MessageListComponent {
     });
   }
 
-  trackMessage(index: number, msg: { role: string; content: string; id?: number }): string | number {
-    return msg.id ?? `${msg.role}-${index}-${msg.content.length}`;
+  trackMessage(index: number, msg: Message): string | number {
+    return msg.id ?? `${msg.role}-${index}-${msg.content.length}-${msg.attachment?.filename ?? ''}`;
   }
 
   renderMarkdown(content: string): SafeHtml {
     const html = marked.parse(content || '', { async: false }) as string;
     return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  resolveAttachment(msg: Message): MessageAttachment | undefined {
+    if (msg.attachment) {
+      return msg.attachment;
+    }
+    if (msg.attachmentFilename) {
+      return {
+        filename: msg.attachmentFilename,
+        mimeType: msg.attachmentMimeType,
+        documentId: msg.attachmentDocumentId
+      };
+    }
+    return undefined;
   }
 
   private scheduleScrollToBottom(): void {

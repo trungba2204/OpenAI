@@ -25,10 +25,20 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface MessageAttachment {
+  documentId?: number;
+  filename: string;
+  mimeType?: string;
+}
+
 export interface Message {
   id?: number;
   role: 'user' | 'assistant';
   content: string;
+  attachment?: MessageAttachment;
+  attachmentFilename?: string;
+  attachmentMimeType?: string;
+  attachmentDocumentId?: number;
   createdAt?: string;
 }
 

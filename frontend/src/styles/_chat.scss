@@ -269,23 +269,6 @@ app-message-list {
   }
 }
 
-.chat-header__agent {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-  font-size: 0.875rem;
-  cursor: pointer;
-  user-select: none;
-
-  input[type='checkbox'] {
-    width: 1rem;
-    height: 1rem;
-    accent-color: var(--accent);
-    cursor: pointer;
-  }
-}
-
 // ── Message list ─────────────────────────────────────────
 .chat-messages {
   flex: 1;
@@ -480,6 +463,55 @@ app-message-list {
     white-space: pre-wrap;
     word-break: break-word;
   }
+}
+
+.chat-msg__text-after-file {
+  margin-top: 0.625rem !important;
+}
+
+.chat-msg-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  max-width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+}
+
+.chat-msg__body.user .chat-msg-attachment {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+html.dark .chat-msg__body.user .chat-msg-attachment {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.chat-msg-attachment__icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.chat-msg-attachment__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.chat-msg-attachment__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-msg-attachment__type {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .chat-msg__column {

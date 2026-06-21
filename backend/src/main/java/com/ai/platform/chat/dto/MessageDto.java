@@ -15,5 +15,8 @@ public class MessageDto {
     private Long id;
     private String role;
     private String content;
+    private String attachmentFilename;
+    private String attachmentMimeType;
+    private Long attachmentDocumentId;
     private LocalDateTime createdAt;
 }

@@ -10,6 +10,7 @@ import com.ai.platform.chat.repository.ConversationRepository;
 import com.ai.platform.chat.repository.MessageRepository;
 import com.ai.platform.common.exception.ApiException;
 import com.ai.platform.document.entity.Document;
+import com.ai.platform.document.repository.DocumentRepository;
 import com.ai.platform.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -21,7 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import reactor.core.publisher.Flux;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,6 +35,7 @@ public class ChatService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final ModelRouterService modelRouterService;
+    private final DocumentRepository documentRepository;
     private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
@@ -55,16 +59,20 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<MessageDto> getMessages(User user, Long conversationId) {
         Conversation conversation = getConversationForUser(user, conversationId);
-        return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId())
-                .stream()
-                .map(this::toMessageDto)
+        List<Message> messages = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
+        List<Document> documents = conversation.getDocuments().stream()
+                .sorted(Comparator.comparing(Document::getCreatedAt))
+                .collect(Collectors.toList());
+
+        return messages.stream()
+                .map(message -> toMessageDto(message, documents, conversation.getId(), user.getId()))
                 .collect(Collectors.toList());
     }
 
     @Transactional
     public MessageDto chat(User user, ChatRequest request) {
         Conversation conversation = resolveConversation(user, request);
-        saveUserMessage(conversation, request.getContent());
+        saveUserMessage(conversation, resolveUserMessageContent(request), request, user);
 
         String response = callLlm(conversation, request.getContent());
         Message assistantMessage = saveAssistantMessage(conversation, response);
@@ -76,7 +84,7 @@ public class ChatService {
     public Flux<String> chatStream(User user, ChatRequest request) {
         Conversation conversation = transactionTemplate.execute(status -> {
             Conversation c = resolveConversation(user, request);
-            saveUserMessage(c, request.getContent());
+            saveUserMessage(c, resolveUserMessageContent(request), request, user);
             updateConversationTitle(c, request.getContent());
             return c;
         });
@@ -197,13 +205,76 @@ public class ChatService {
         return sb.toString();
     }
 
-    private void saveUserMessage(Conversation conversation, String content) {
-        Message message = Message.builder()
+    private String resolveUserMessageContent(ChatRequest request) {
+        if (request.getDisplayContent() != null && !request.getDisplayContent().isBlank()) {
+            return request.getDisplayContent();
+        }
+        return request.getContent();
+    }
+
+    private void saveUserMessage(Conversation conversation, String content, ChatRequest request, User user) {
+        Message.MessageBuilder builder = Message.builder()
                 .conversation(conversation)
                 .role("user")
-                .content(content)
-                .build();
+                .content(content);
+
+        if (request != null) {
+            if (request.getAttachmentDocumentId() != null) {
+                builder.attachmentDocumentId(request.getAttachmentDocumentId());
+            }
+            if (request.getAttachmentFilename() != null && !request.getAttachmentFilename().isBlank()) {
+                builder.attachmentFilename(request.getAttachmentFilename());
+            }
+            if (request.getAttachmentMimeType() != null && !request.getAttachmentMimeType().isBlank()) {
+                builder.attachmentMimeType(request.getAttachmentMimeType());
+            }
+            if (request.getAttachmentDocumentId() != null
+                    && (request.getAttachmentFilename() == null || request.getAttachmentFilename().isBlank())) {
+                documentRepository.findByIdAndUserId(request.getAttachmentDocumentId(), user.getId())
+                        .ifPresent(doc -> applyAttachment(builder, doc));
+            }
+        }
+
+        Message message = builder.build();
+        if (message.getAttachmentFilename() == null) {
+            resolveConversationDocument(conversation.getId(), user.getId(), message.getCreatedAt())
+                    .ifPresent(doc -> applyAttachment(message, doc));
+        }
+
         messageRepository.save(message);
+    }
+
+    private java.util.Optional<Document> resolveConversationDocument(Long conversationId, Long userId, LocalDateTime messageTime) {
+        return conversationRepository.findByIdAndUserIdWithDocuments(conversationId, userId)
+                .flatMap(conversation -> {
+                    if (conversation.getDocuments().isEmpty()) {
+                        return java.util.Optional.empty();
+                    }
+                    List<Document> sorted = conversation.getDocuments().stream()
+                            .sorted(Comparator.comparing(Document::getCreatedAt))
+                            .collect(Collectors.toList());
+
+                    Document best = null;
+                    LocalDateTime compareTime = messageTime != null ? messageTime : LocalDateTime.now();
+                    for (Document doc : sorted) {
+                        if (!doc.getCreatedAt().isAfter(compareTime)) {
+                            best = doc;
+                        }
+                    }
+                    return java.util.Optional.ofNullable(best != null ? best : sorted.get(sorted.size() - 1));
+                });
+    }
+
+    private void applyAttachment(Message.MessageBuilder builder, Document document) {
+        builder.attachmentFilename(document.getFilename());
+        builder.attachmentMimeType(document.getMimeType());
+        builder.attachmentDocumentId(document.getId());
+    }
+
+    private void applyAttachment(Message message, Document document) {
+        message.setAttachmentFilename(document.getFilename());
+        message.setAttachmentMimeType(document.getMimeType());
+        message.setAttachmentDocumentId(document.getId());
     }
 
     private Message saveAssistantMessage(Conversation conversation, String content) {
@@ -248,8 +319,49 @@ public class ChatService {
                 .id(m.getId())
                 .role(m.getRole())
                 .content(m.getContent())
+                .attachmentFilename(m.getAttachmentFilename())
+                .attachmentMimeType(m.getAttachmentMimeType())
+                .attachmentDocumentId(m.getAttachmentDocumentId())
                 .createdAt(m.getCreatedAt())
                 .build();
+    }
+
+    private MessageDto toMessageDto(Message m, List<Document> conversationDocuments, Long conversationId, Long userId) {
+        Document attachmentDocument = null;
+        if (m.getAttachmentFilename() == null
+                && "user".equalsIgnoreCase(m.getRole())
+                && !conversationDocuments.isEmpty()) {
+            attachmentDocument = resolveConversationDocument(conversationId, userId, m.getCreatedAt())
+                    .or(() -> resolveDocumentForMessage(m, conversationDocuments))
+                    .orElse(null);
+        }
+
+        return MessageDto.builder()
+                .id(m.getId())
+                .role(m.getRole())
+                .content(m.getContent())
+                .attachmentFilename(m.getAttachmentFilename() != null
+                        ? m.getAttachmentFilename()
+                        : attachmentDocument != null ? attachmentDocument.getFilename() : null)
+                .attachmentMimeType(m.getAttachmentMimeType() != null
+                        ? m.getAttachmentMimeType()
+                        : attachmentDocument != null ? attachmentDocument.getMimeType() : null)
+                .attachmentDocumentId(m.getAttachmentDocumentId() != null
+                        ? m.getAttachmentDocumentId()
+                        : attachmentDocument != null ? attachmentDocument.getId() : null)
+                .createdAt(m.getCreatedAt())
+                .build();
+    }
+
+    private java.util.Optional<Document> resolveDocumentForMessage(Message message, List<Document> documents) {
+        LocalDateTime messageTime = message.getCreatedAt();
+        Document best = null;
+        for (Document doc : documents) {
+            if (messageTime == null || !doc.getCreatedAt().isAfter(messageTime)) {
+                best = doc;
+            }
+        }
+        return java.util.Optional.ofNullable(best != null ? best : documents.get(documents.size() - 1));
     }
 
     private String truncate(String text, int max) {

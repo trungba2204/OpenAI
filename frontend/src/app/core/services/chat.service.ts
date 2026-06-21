@@ -1,8 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AiModel, AiModelInfo, Conversation, Message } from '../models';
+import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment } from '../models';
 import { AuthService } from './auth.service';
 
 const DEFAULT_MODELS: AiModelInfo[] = [
@@ -46,7 +46,29 @@ export class ChatService {
   }
 
   getMessages(conversationId: number): Observable<Message[]> {
-    return this.http.get<Message[]>(`${environment.apiUrl}/conversations/${conversationId}/messages`);
+    return this.http.get<Message[]>(`${environment.apiUrl}/conversations/${conversationId}/messages`).pipe(
+      map(messages => messages.map(m => this.normalizeMessage(m)))
+    );
+  }
+
+  private normalizeMessage(message: Message): Message {
+    const attachment = message.attachment ?? (
+      message.attachmentFilename
+        ? {
+            filename: message.attachmentFilename,
+            mimeType: message.attachmentMimeType,
+            documentId: message.attachmentDocumentId
+          }
+        : undefined
+    );
+
+    return {
+      ...message,
+      attachment,
+      attachmentFilename: undefined,
+      attachmentMimeType: undefined,
+      attachmentDocumentId: undefined
+    };
   }
 
   deleteConversation(conversationId: number): Observable<void> {
@@ -59,7 +81,13 @@ export class ChatService {
     });
   }
 
-  streamMessage(conversationId: number | null, content: string, model: AiModel): Observable<string> {
+  streamMessage(
+    conversationId: number | null,
+    content: string,
+    model: AiModel,
+    attachment?: MessageAttachment,
+    displayContent?: string
+  ): Observable<string> {
     return new Observable(observer => {
       const run = async (retried = false) => {
         const token = this.auth.getAccessToken();
@@ -69,13 +97,27 @@ export class ChatService {
         }
 
         try {
+          const body: Record<string, unknown> = { conversationId, content, model };
+          if (displayContent?.trim()) {
+            body['displayContent'] = displayContent.trim();
+          }
+          if (attachment?.documentId) {
+            body['attachmentDocumentId'] = attachment.documentId;
+          }
+          if (attachment?.filename) {
+            body['attachmentFilename'] = attachment.filename;
+          }
+          if (attachment?.mimeType) {
+            body['attachmentMimeType'] = attachment.mimeType;
+          }
+
           const response = await fetch(`${environment.apiUrl}/chat/stream`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ conversationId, content, model })
+            body: JSON.stringify(body)
           });
 
           if ((response.status === 401 || response.status === 403) && !retried && this.auth.getRefreshToken()) {
