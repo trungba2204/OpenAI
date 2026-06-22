@@ -2,17 +2,15 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { WorkspaceService } from '../../../core/services/workspace.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { Workspace, Project } from '../../../core/models/ide';
 
 @Component({
   selector: 'app-workspace-detail',
-  imports: [DatePipe, FormsModule, RouterLink, SidebarComponent],
+  imports: [DatePipe, FormsModule, RouterLink],
   template: `
-    <div class="feature-layout">
-      <app-sidebar [conversations]="[]" [activeId]="null" (newChat)="goChat()" (selectConversation)="goChat()" />
+    <div class="ide-mode-page">
       <main class="feature-main feature-main--scroll">
         <div class="feature-container">
           <div class="feature-header">
@@ -136,9 +134,5 @@ export class WorkspaceDetailComponent implements OnInit {
   deleteProject(id: number): void {
     if (!confirm('Xóa project này?')) return;
     this.projectService.delete(id).subscribe(() => this.loadProjects());
-  }
-
-  goChat(): void {
-    this.router.navigate(['/chat']);
   }
 }

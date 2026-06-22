@@ -32,7 +32,6 @@ export class ChatService {
   private auth = inject(AuthService);
 
   selectedModel = signal<AiModel>('GROQ_LLAMA_70B');
-  agentMode = signal(false);
   pendingPrompt = signal<string | null>(null);
 
   constructor(private http: HttpClient) {}
@@ -170,12 +169,6 @@ export class ChatService {
       };
 
       run();
-    });
-  }
-
-  agentChat(conversationId: number | null, content: string, model: AiModel): Observable<{ content: string }> {
-    return this.http.post<{ content: string }>(`${environment.apiUrl}/agent/chat`, {
-      conversationId, content, model
     });
   }
 }

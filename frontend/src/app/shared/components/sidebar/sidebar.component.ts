@@ -39,27 +39,6 @@ import { Conversation } from '../../../core/models';
         }
       </div>
 
-      <nav class="chat-sidebar__nav">
-        <a routerLink="/prompts" routerLinkActive="active" class="chat-sidebar__link">
-          <span>📚</span> Prompt Library
-        </a>
-        <a routerLink="/documents" routerLinkActive="active" class="chat-sidebar__link">
-          <span>📄</span> Documents
-        </a>
-        <a routerLink="/agent" routerLinkActive="active" class="chat-sidebar__link">
-          <span>🤖</span> Agent
-        </a>
-        <a routerLink="/markdown" routerLinkActive="active" class="chat-sidebar__link">
-          <span>📝</span> Markdown
-        </a>
-        <a routerLink="/ppt" routerLinkActive="active" class="chat-sidebar__link">
-          <span>📊</span> PPT Generator
-        </a>
-        <a routerLink="/workspaces" routerLinkActive="active" class="chat-sidebar__link">
-          <span>💻</span> AI IDE
-        </a>
-      </nav>
-
       <div class="chat-sidebar__footer">
         <div class="chat-sidebar__user">
           <p class="name">{{ auth.currentUser()?.fullName }}</p>

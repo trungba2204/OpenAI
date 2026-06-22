@@ -2,16 +2,14 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { WorkspaceService } from '../../../core/services/workspace.service';
 import { Workspace } from '../../../core/models/ide';
 
 @Component({
   selector: 'app-workspace-list',
-  imports: [DatePipe, FormsModule, RouterLink, SidebarComponent],
+  imports: [DatePipe, FormsModule, RouterLink],
   template: `
-    <div class="feature-layout">
-      <app-sidebar [conversations]="[]" [activeId]="null" (newChat)="goChat()" (selectConversation)="goChat()" />
+    <div class="ide-mode-page">
       <main class="feature-main feature-main--scroll">
         <div class="feature-container">
           <div class="feature-header">
@@ -75,9 +73,5 @@ export class WorkspaceListComponent implements OnInit {
     this.workspaceService.create(name).subscribe({
       next: () => { this.newName = ''; this.showForm = false; this.load(); }
     });
-  }
-
-  goChat(): void {
-    this.router.navigate(['/chat']);
   }
 }

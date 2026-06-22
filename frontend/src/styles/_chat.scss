@@ -300,24 +300,6 @@ app-message-list {
   }
 }
 
-.chat-header__agent {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-  font-size: 0.875rem;
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-
-  input[type='checkbox'] {
-    width: 1rem;
-    height: 1rem;
-    accent-color: var(--accent);
-    cursor: pointer;
-  }
-}
-
 .chat-content {
   flex: 1;
   min-height: 0;
