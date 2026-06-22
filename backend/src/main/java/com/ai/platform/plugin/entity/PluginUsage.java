@@ -39,6 +39,14 @@ public class PluginUsage {
     @Builder.Default
     private Integer tokens = 0;
 
+    @Column(name = "input_tokens", nullable = false)
+    @Builder.Default
+    private Integer inputTokens = 0;
+
+    @Column(name = "output_tokens", nullable = false)
+    @Builder.Default
+    private Integer outputTokens = 0;
+
     @Column(nullable = false, precision = 12, scale = 6)
     @Builder.Default
     private BigDecimal cost = BigDecimal.ZERO;

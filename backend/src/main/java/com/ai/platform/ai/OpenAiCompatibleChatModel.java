@@ -7,6 +7,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.DefaultUsage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -70,7 +72,7 @@ public class OpenAiCompatibleChatModel implements ChatModel {
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block();
-            return toChatResponse(extractCompletionText(response));
+            return toChatResponse(response);
         } catch (WebClientResponseException e) {
             throw wrapError(e);
         }
@@ -167,6 +169,27 @@ public class OpenAiCompatibleChatModel implements ChatModel {
         }
         JsonNode content = response.path("choices").path(0).path("message").path("content");
         return content.isMissingNode() || content.isNull() ? "" : content.asText("");
+    }
+
+    private ChatResponse toChatResponse(JsonNode apiResponse) {
+        String text = extractCompletionText(apiResponse);
+        ChatResponseMetadata.Builder metadata = ChatResponseMetadata.builder();
+        if (apiResponse != null) {
+            JsonNode usage = apiResponse.path("usage");
+            if (!usage.isMissingNode() && !usage.isNull()) {
+                int promptTokens = usage.path("prompt_tokens").asInt(0);
+                int completionTokens = usage.path("completion_tokens").asInt(0);
+                int totalTokens = usage.path("total_tokens").asInt(0);
+                if (totalTokens == 0 && (promptTokens > 0 || completionTokens > 0)) {
+                    totalTokens = promptTokens + completionTokens;
+                }
+                metadata.usage(new DefaultUsage(promptTokens, completionTokens, totalTokens));
+            }
+        }
+        return new ChatResponse(
+                List.of(new Generation(new AssistantMessage(text))),
+                metadata.build()
+        );
     }
 
     private ChatResponse toChatResponse(String text) {

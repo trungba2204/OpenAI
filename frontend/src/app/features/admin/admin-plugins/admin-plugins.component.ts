@@ -84,7 +84,9 @@ import {
               <th>Editor</th>
               <th>Endpoint</th>
               <th>Model</th>
-              <th>Tokens</th>
+              <th>In</th>
+              <th>Out</th>
+              <th>Total</th>
             </tr>
           </thead>
           <tbody>
@@ -95,7 +97,9 @@ import {
                 <td>{{ u.editorType }}</td>
                 <td>{{ u.endpoint }}</td>
                 <td class="admin-table__cell-clip">{{ u.modelName || '—' }}</td>
-                <td>{{ u.tokens }}</td>
+                <td>{{ u.inputTokens | number }}</td>
+                <td>{{ u.outputTokens | number }}</td>
+                <td>{{ u.tokens | number }}</td>
               </tr>
             }
           </tbody>

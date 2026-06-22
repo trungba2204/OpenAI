@@ -109,6 +109,8 @@ export interface AdminPluginUsage {
   endpoint: string;
   modelName?: string;
   tokens: number;
+  inputTokens: number;
+  outputTokens: number;
   cost: number;
   createdAt: string;
 }

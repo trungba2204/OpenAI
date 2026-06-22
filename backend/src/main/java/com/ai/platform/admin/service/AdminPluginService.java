@@ -126,6 +126,8 @@ public class AdminPluginService {
                 .endpoint(u.getEndpoint())
                 .modelName(u.getModelName())
                 .tokens(u.getTokens())
+                .inputTokens(u.getInputTokens())
+                .outputTokens(u.getOutputTokens())
                 .cost(u.getCost())
                 .createdAt(u.getCreatedAt())
                 .build();

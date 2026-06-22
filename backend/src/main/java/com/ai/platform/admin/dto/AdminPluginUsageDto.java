@@ -20,6 +20,8 @@ public class AdminPluginUsageDto {
     private String endpoint;
     private String modelName;
     private int tokens;
+    private int inputTokens;
+    private int outputTokens;
     private BigDecimal cost;
     private LocalDateTime createdAt;
 }

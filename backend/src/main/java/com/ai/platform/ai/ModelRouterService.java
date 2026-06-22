@@ -38,38 +38,55 @@ public class ModelRouterService {
     }
 
     public String callContent(AiModel model, Prompt prompt) {
+        return callContentResult(model, prompt).text();
+    }
+
+    public AiCompletionResult callContentResult(AiModel model, Prompt prompt) {
         ChatResponse response = chatModel.call(withModel(model, prompt));
-        return extractText(response);
+        String text = extractText(response);
+        AiTokenUsage usage = AiTokenUsage.fromChatResponse(response);
+        return new AiCompletionResult(text != null ? text : "", usage);
     }
 
     public String callSimple(AiModel model, String system, String user) {
+        return callSimpleResult(model, system, user).text();
+    }
+
+    public AiCompletionResult callSimpleResult(AiModel model, String system, String user) {
         List<org.springframework.ai.chat.messages.Message> messages = new ArrayList<>();
         if (system != null && !system.isBlank()) {
             messages.add(new SystemMessage(system));
         }
         messages.add(new UserMessage(user));
-        return callContent(model, new Prompt(messages));
+        AiCompletionResult result = callContentResult(model, new Prompt(messages));
+        AiTokenUsage usage = result.usage().orEstimate(system + "\n" + user, result.text());
+        return new AiCompletionResult(result.text(), usage);
     }
 
     public String callWithImages(AiModel model, String system, String userText,
                                  List<ImageAttachment> images) {
+        return callWithImagesResult(model, system, userText, images).text();
+    }
+
+    public AiCompletionResult callWithImagesResult(AiModel model, String system, String userText,
+                                                   List<ImageAttachment> images) {
         if (images == null || images.isEmpty()) {
-            return callSimple(model, system, userText);
+            return callSimpleResult(model, system, userText);
         }
         if (model.getProvider() != AiProvider.OPENROUTER) {
             String names = String.join(", ", images.stream().map(ImageAttachment::name).toList());
             String note = "\n\n[Lưu ý: Đính kèm ảnh " + names
                     + " — hãy chọn model OR GPT-4o Mini để phân tích ảnh]";
-            return callSimple(model, system, userText + note);
+            return callSimpleResult(model, system, userText + note);
         }
         return callOpenRouterVision(model, system, userText, images);
     }
 
-    private String callOpenRouterVision(AiModel model, String system, String userText,
-                                        List<ImageAttachment> images) {
+    private AiCompletionResult callOpenRouterVision(AiModel model, String system, String userText,
+                                                    List<ImageAttachment> images) {
         AiProviderConfig config = aiProperties.getProviders().get("openrouter");
         if (config == null || config.getApiKey() == null || config.getApiKey().isBlank()) {
-            return callSimple(model, system, userText);
+            return callSimpleResult(model, system, userText);
         }
         WebClient client = webClientBuilder.clone()
                 .baseUrl(config.getBaseUrl())
@@ -105,12 +122,17 @@ public class ModelRouterService {
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block();
-            if (response == null) return "";
+            if (response == null) {
+                return new AiCompletionResult("", AiTokenUsage.empty());
+            }
             JsonNode err = response.get("error");
             if (err != null) {
                 throw new IllegalStateException(err.path("message").asText("Vision API error"));
             }
-            return response.path("choices").path(0).path("message").path("content").asText("");
+            String text = response.path("choices").path(0).path("message").path("content").asText("");
+            AiTokenUsage usage = AiTokenUsage.fromJsonNode(response.path("usage"))
+                    .orEstimate(system + "\n" + userText, text);
+            return new AiCompletionResult(text, usage);
         } catch (Exception e) {
             throw new IllegalStateException("Vision call failed: " + e.getMessage(), e);
         }

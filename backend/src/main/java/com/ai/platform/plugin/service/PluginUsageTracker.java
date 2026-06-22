@@ -1,6 +1,7 @@
 package com.ai.platform.plugin.service;
 
 import com.ai.platform.ai.AiModel;
+import com.ai.platform.ai.AiTokenUsage;
 import com.ai.platform.plugin.entity.PluginEditorType;
 import com.ai.platform.plugin.entity.PluginUsage;
 import com.ai.platform.plugin.repository.PluginUsageRepository;
@@ -18,20 +19,21 @@ public class PluginUsageTracker {
     private final PluginUsageRepository usageRepository;
 
     @Transactional
-    public void record(User user, PluginEditorType editorType, String endpoint, AiModel model, String prompt, String response) {
-        int tokens = estimateTokens(prompt) + estimateTokens(response);
+    public void record(User user, PluginEditorType editorType, String endpoint, AiModel model,
+                       String prompt, String response, AiTokenUsage usage) {
+        AiTokenUsage resolved = usage != null ? usage : AiTokenUsage.empty();
+        if (!resolved.isKnown()) {
+            resolved = resolved.orEstimate(prompt, response);
+        }
         usageRepository.save(PluginUsage.builder()
                 .user(user)
                 .editorType(editorType != null ? editorType : PluginEditorType.VSCODE)
                 .endpoint(endpoint)
                 .modelName(model != null ? model.getModelId() : null)
-                .tokens(tokens)
+                .tokens(resolved.totalTokens())
+                .inputTokens(resolved.inputTokens())
+                .outputTokens(resolved.outputTokens())
                 .cost(BigDecimal.ZERO)
                 .build());
-    }
-
-    private int estimateTokens(String text) {
-        if (text == null || text.isBlank()) return 0;
-        return Math.max(1, text.length() / 4);
     }
 }

@@ -1,5 +1,6 @@
 package com.ai.platform.plugin.service;
 
+import com.ai.platform.ai.AiCompletionResult;
 import com.ai.platform.ai.AiModel;
 import com.ai.platform.ai.ModelRouterService;
 import com.ai.platform.knowledge.service.KnowledgeContextService;
@@ -8,9 +9,6 @@ import com.ai.platform.plugin.entity.PluginEditorType;
 import com.ai.platform.plugin.repository.PluginUsageRepository;
 import com.ai.platform.user.entity.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,9 +38,10 @@ public class PluginAiService {
 
         if (request.getKnowledgeBaseId() != null) {
             var rag = knowledgeContextService.buildContext(user, request.getKnowledgeBaseId(), request.getMessage());
-            String answer = call(model, rag.systemPrompt(), rag.userContext());
-            usageTracker.record(user, editorType(request.getContext()), "knowledge-chat", model, request.getMessage(), answer);
-            String full = answer;
+            AiCompletionResult result = complete(model, rag.systemPrompt(), rag.userContext());
+            usageTracker.record(user, editorType(request.getContext()), "knowledge-chat", model,
+                    request.getMessage(), result.text(), result.usage());
+            String full = result.text();
             if (!rag.sources().isEmpty()) {
                 full += knowledgeContextService.formatSourcesFooter(rag.sources());
             }
@@ -64,11 +63,11 @@ public class PluginAiService {
         var images = messageBuilder.extractImages(request.getAttachments()).stream()
                 .map(i -> new ModelRouterService.ImageAttachment(i.name(), i.mimeType(), i.base64()))
                 .toList();
-        String answer = images.isEmpty()
-                ? call(model, system, userMsg)
-                : modelRouterService.callWithImages(model, system, userMsg, images);
-        usageTracker.record(user, editorType(request.getContext()), "chat", model, userMsg, answer);
-        return PluginChatResponse.builder().answer(answer).build();
+        AiCompletionResult result = images.isEmpty()
+                ? complete(model, system, userMsg)
+                : completeWithImages(model, system, userMsg, images);
+        usageTracker.record(user, editorType(request.getContext()), "chat", model, userMsg, result.text(), result.usage());
+        return PluginChatResponse.builder().answer(result.text()).build();
     }
 
     @Transactional
@@ -127,9 +126,9 @@ public class PluginAiService {
                     ```
                     """.formatted(action, ctx, code != null ? code : "");
         }
-        String result = call(model, system, userMsg);
-        usageTracker.record(user, editorType(request.getContext()), "inline", model, userMsg, result);
-        return PluginInlineResponse.builder().result(result).build();
+        AiCompletionResult result = complete(model, system, userMsg);
+        usageTracker.record(user, editorType(request.getContext()), "inline", model, userMsg, result.text(), result.usage());
+        return PluginInlineResponse.builder().result(result.text()).build();
     }
 
     @Transactional
@@ -140,9 +139,9 @@ public class PluginAiService {
         String suffix = request.getSuffix() != null ? request.getSuffix() : "";
         String system = "Complete the code at cursor. Return ONLY the completion text to insert, no explanation.";
         String userMsg = "Prefix:\n" + prefix + "\n\nSuffix:\n" + suffix;
-        String completion = call(model, system, userMsg);
-        usageTracker.record(user, editorType(request.getContext()), "completion", model, userMsg, completion);
-        return PluginCompletionResponse.builder().completion(completion).build();
+        AiCompletionResult result = complete(model, system, userMsg);
+        usageTracker.record(user, editorType(request.getContext()), "completion", model, userMsg, result.text(), result.usage());
+        return PluginCompletionResponse.builder().completion(result.text()).build();
     }
 
     @Transactional
@@ -163,22 +162,22 @@ public class PluginAiService {
         var images = messageBuilder.extractImages(request.getAttachments()).stream()
                 .map(i -> new ModelRouterService.ImageAttachment(i.name(), i.mimeType(), i.base64()))
                 .toList();
-        String answer = images.isEmpty()
-                ? call(model, system, userMsg)
-                : modelRouterService.callWithImages(model, system, userMsg, images);
-        usageTracker.record(user, editorType(request.getContext()), "agent", model, userMsg, answer);
-        return PluginChatResponse.builder().answer(answer).build();
+        AiCompletionResult result = images.isEmpty()
+                ? complete(model, system, userMsg)
+                : completeWithImages(model, system, userMsg, images);
+        usageTracker.record(user, editorType(request.getContext()), "agent", model, userMsg, result.text(), result.usage());
+        return PluginChatResponse.builder().answer(result.text()).build();
     }
 
     @Transactional
     public PluginInlineResponse terminal(User user, String command, PluginContextPayload context) {
         touchContext(user, context);
         AiModel model = AiModel.GROQ_LLAMA_70B;
-        String answer = call(model,
+        AiCompletionResult result = complete(model,
                 "Explain terminal commands clearly in Vietnamese.",
                 "Command: " + command);
-        usageTracker.record(user, editorType(context), "terminal", model, command, answer);
-        return PluginInlineResponse.builder().result(answer).build();
+        usageTracker.record(user, editorType(context), "terminal", model, command, result.text(), result.usage());
+        return PluginInlineResponse.builder().result(result.text()).build();
     }
 
     @Transactional(readOnly = true)
@@ -204,7 +203,12 @@ public class PluginAiService {
         return ctx != null && ctx.getEditorType() != null ? ctx.getEditorType() : PluginEditorType.VSCODE;
     }
 
-    private String call(AiModel model, String system, String user) {
-        return modelRouterService.callSimple(model, system, user);
+    private AiCompletionResult complete(AiModel model, String system, String user) {
+        return modelRouterService.callSimpleResult(model, system, user);
+    }
+
+    private AiCompletionResult completeWithImages(AiModel model, String system, String userMsg,
+                                                  List<ModelRouterService.ImageAttachment> images) {
+        return modelRouterService.callWithImagesResult(model, system, userMsg, images);
     }
 }
