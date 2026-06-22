@@ -20,18 +20,35 @@ import { AppMode, AppModeService } from '../../../core/services/app-mode.service
         <button
           type="button"
           class="app-mode-switch__btn"
+          [class.app-mode-switch__btn--active]="modeService.mode() === 'knowledge'"
+          [disabled]="modeService.transitioning()"
+          (click)="select('knowledge')">
+          <span class="app-mode-switch__icon">🧠</span>
+          <span>Knowledge</span>
+        </button>
+        <button
+          type="button"
+          class="app-mode-switch__btn"
           [class.app-mode-switch__btn--active]="modeService.mode() === 'ide'"
           [disabled]="modeService.transitioning()"
           (click)="select('ide')">
           <span class="app-mode-switch__icon">💻</span>
           <span>IDE</span>
         </button>
-        <span class="app-mode-switch__glow" [class.app-mode-switch__glow--ide]="modeService.mode() === 'ide'"></span>
+        <span
+          class="app-mode-switch__glow"
+          [class.app-mode-switch__glow--knowledge]="modeService.mode() === 'knowledge'"
+          [class.app-mode-switch__glow--ide]="modeService.mode() === 'ide'"></span>
       </div>
     }
 
     @if (modeService.transitioning()) {
-      <div class="mode-transition" aria-hidden="true">
+      <div
+        class="mode-transition"
+        [class.mode-transition--chat]="modeService.transitionTarget() === 'chat'"
+        [class.mode-transition--knowledge]="modeService.transitionTarget() === 'knowledge'"
+        [class.mode-transition--ide]="modeService.transitionTarget() === 'ide'"
+        aria-hidden="true">
         <div class="mode-transition__ring"></div>
         <div class="mode-transition__ring mode-transition__ring--delay"></div>
         <div class="mode-transition__flash"></div>

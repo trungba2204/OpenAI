@@ -279,8 +279,10 @@ app-message-list {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
+  padding-right: 17rem;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .chat-select {
@@ -293,11 +295,32 @@ app-message-list {
   font-family: inherit;
   cursor: pointer;
   outline: none;
+  max-width: min(220px, 100%);
+
+  &:last-of-type {
+    max-width: min(260px, 100%);
+  }
 
   &:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
   }
+
+  &--active {
+    border-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  }
+}
+
+.chat-header__kb-badge {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #10b981);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .chat-content {

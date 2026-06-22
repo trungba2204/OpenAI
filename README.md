@@ -13,6 +13,7 @@ Nền tảng AI SaaS với Angular 20 + Spring Boot 3.4 + Spring AI 1.0.
 - Markdown Generator
 - PPT Generator
 - **AI IDE Workspace** (Monaco Editor, upload ZIP, AI chat theo code)
+- **AI Knowledge Training** (upload tài liệu, huấn luyện RAG, chat theo bộ kiến thức)
 - **Admin Portal** (Dashboard, Users, AI Usage, Conversations, Analytics) — chỉ `ROLE_ADMIN`
 
 ## Cấu trúc
@@ -131,6 +132,55 @@ Theo `AgentIDE.md` — MVP gồm:
 **API chính:** `/api/workspaces`, `/api/projects/upload`, `/api/projects/{id}/tree`, `/api/files/{id}`, `/api/ai/chat`
 
 > Restart backend để Flyway chạy migration `V11__ide_workspace.sql`.
+
+## AI Knowledge Training (MVP Phase 1)
+
+Theo `AgentKnowledge.md` — huấn luyện AI từ tài liệu riêng và chat RAG.
+
+### Chế độ ứng dụng
+
+Nút **Chat | Knowledge | IDE** góc trên phải (có animation chuyển mode). Knowledge hiển thị trên `/knowledge`, `/knowledge/create` và các trang quản lý; ẩn khi vào chat fullscreen `/knowledge/:id/chat`.
+
+### Routes
+
+| Route | Mô tả |
+|-------|-------|
+| `/knowledge` | Danh sách bộ kiến thức |
+| `/knowledge/create` | Tạo bộ kiến thức mới |
+| `/knowledge/:id/documents` | Upload tài liệu (PDF, DOCX, TXT, MD, CSV, XLSX) |
+| `/knowledge/:id/chat` | Chat với AI dựa trên tài liệu |
+| `/knowledge/:id/settings` | System prompt |
+| `/knowledge/:id/analytics` | Placeholder Phase 2 |
+
+### Luồng sử dụng
+
+1. Chuyển sang **Knowledge** mode → tạo bộ kiến thức
+2. Upload tài liệu → hệ thống tự chunk và index (trạng thái PROCESSING → READY)
+3. Vào **Chat** → hỏi đáp; AI trả lời kèm danh sách nguồn tài liệu
+4. Tùy chỉnh **System prompt** trong Settings
+
+### API Knowledge
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| POST | `/api/knowledge-bases` | Tạo bộ kiến thức |
+| GET | `/api/knowledge-bases` | Danh sách |
+| GET | `/api/knowledge-bases/{id}` | Chi tiết |
+| PUT | `/api/knowledge-bases/{id}` | Cập nhật |
+| PUT | `/api/knowledge-bases/{id}/prompt` | System prompt |
+| DELETE | `/api/knowledge-bases/{id}` | Xóa |
+| POST | `/api/knowledge-bases/{id}/documents` | Upload tài liệu |
+| GET | `/api/knowledge-bases/{id}/documents` | Danh sách tài liệu |
+| POST | `/api/knowledge-bases/{id}/chat` | Chat RAG |
+
+### Migration
+
+Restart backend để Flyway chạy `V13__knowledge_mvp.sql`.
+
+### Phase 2 (sắp tới)
+
+- Qdrant vector store + embedding API
+- Citations chi tiết (trang/số), Multi-KB search, Analytics
 
 ## API chính
 

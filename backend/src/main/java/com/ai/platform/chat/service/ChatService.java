@@ -11,6 +11,7 @@ import com.ai.platform.chat.repository.MessageRepository;
 import com.ai.platform.common.exception.ApiException;
 import com.ai.platform.document.entity.Document;
 import com.ai.platform.document.repository.DocumentRepository;
+import com.ai.platform.knowledge.service.KnowledgeContextService;
 import com.ai.platform.usage.service.UsageTrackingService;
 import com.ai.platform.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class ChatService {
     private final DocumentRepository documentRepository;
     private final TransactionTemplate transactionTemplate;
     private final UsageTrackingService usageTrackingService;
+    private final KnowledgeContextService knowledgeContextService;
 
     @Transactional(readOnly = true)
     public List<ConversationDto> getConversations(User user) {
@@ -76,7 +78,15 @@ public class ChatService {
         Conversation conversation = resolveConversation(user, request);
         saveUserMessage(conversation, resolveUserMessageContent(request), request, user);
 
-        String response = callLlm(conversation, request.getContent());
+        KnowledgeContextService.RagContext ragContext = null;
+        if (request.getKnowledgeBaseId() != null) {
+            ragContext = knowledgeContextService.buildContext(user, request.getKnowledgeBaseId(), request.getContent());
+        }
+
+        String response = callLlm(conversation, request.getContent(), user, ragContext);
+        if (ragContext != null && !ragContext.sources().isEmpty()) {
+            response += knowledgeContextService.formatSourcesFooter(ragContext.sources());
+        }
         Message assistantMessage = saveAssistantMessage(conversation, response);
         updateConversationTitle(conversation, request.getContent());
         usageTrackingService.recordUsage(user, conversation, request.getModel() != null ? request.getModel() : conversation.getModel(),
@@ -86,6 +96,12 @@ public class ChatService {
     }
 
     public Flux<String> chatStream(User user, ChatRequest request) {
+        KnowledgeContextService.RagContext ragContext = null;
+        if (request.getKnowledgeBaseId() != null) {
+            ragContext = knowledgeContextService.buildContext(user, request.getKnowledgeBaseId(), request.getContent());
+        }
+        final KnowledgeContextService.RagContext finalRag = ragContext;
+
         Conversation conversation = transactionTemplate.execute(status -> {
             Conversation c = resolveConversation(user, request);
             saveUserMessage(c, resolveUserMessageContent(request), request, user);
@@ -98,7 +114,7 @@ public class ChatService {
                 .findByIdAndUserIdWithDocuments(conversationId, user.getId())
                 .orElseThrow(() -> new ApiException("Conversation not found", HttpStatus.NOT_FOUND));
 
-        Prompt prompt = buildPrompt(conversationWithDocs, request.getContent());
+        Prompt prompt = buildPrompt(conversationWithDocs, request.getContent(), finalRag);
         final AiModel model = request.getModel() != null ? request.getModel() : conversationWithDocs.getModel();
         final String promptContent = request.getContent();
 
@@ -110,8 +126,12 @@ public class ChatService {
                         transactionTemplate.executeWithoutResult(status -> {
                             Conversation c = conversationRepository.findById(conversationId)
                                     .orElseThrow(() -> new ApiException("Conversation not found", HttpStatus.NOT_FOUND));
-                            saveAssistantMessage(c, fullResponse.toString());
-                            usageTrackingService.recordUsage(user, c, model, promptContent, fullResponse.toString());
+                            String response = fullResponse.toString();
+                            if (finalRag != null && !finalRag.sources().isEmpty()) {
+                                response += knowledgeContextService.formatSourcesFooter(finalRag.sources());
+                            }
+                            saveAssistantMessage(c, response);
+                            usageTrackingService.recordUsage(user, c, model, promptContent, response);
                         });
                     }
                 })
@@ -143,13 +163,13 @@ public class ChatService {
         return conversationRepository.save(conversation);
     }
 
-    private String callLlm(Conversation conversation, String userContent) {
+    private String callLlm(Conversation conversation, String userContent, User user, KnowledgeContextService.RagContext ragContext) {
         Exception lastError = null;
         for (int attempt = 0; attempt < 2; attempt++) {
             try {
                 return modelRouterService.callContent(
                         conversation.getModel(),
-                        buildPrompt(conversation, userContent)
+                        buildPrompt(conversation, userContent, ragContext)
                 );
             } catch (Exception e) {
                 lastError = e;
@@ -170,8 +190,23 @@ public class ChatService {
         );
     }
 
-    private Prompt buildPrompt(Conversation conversation, String userContent) {
+    private Prompt buildPrompt(Conversation conversation, String userContent, KnowledgeContextService.RagContext ragContext) {
         List<org.springframework.ai.chat.messages.Message> messages = new ArrayList<>();
+
+        if (ragContext != null) {
+            messages.add(new SystemMessage(ragContext.systemPrompt()));
+            List<Message> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
+            for (int i = 0; i < history.size() - 1; i++) {
+                Message msg = history.get(i);
+                if ("user".equalsIgnoreCase(msg.getRole())) {
+                    messages.add(new UserMessage(msg.getContent()));
+                } else if ("assistant".equalsIgnoreCase(msg.getRole())) {
+                    messages.add(new AssistantMessage(msg.getContent()));
+                }
+            }
+            messages.add(new UserMessage(ragContext.userContext()));
+            return new Prompt(messages);
+        }
 
         String systemContext = buildSystemContext(conversation);
         if (!systemContext.isBlank()) {

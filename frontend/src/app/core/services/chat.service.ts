@@ -32,6 +32,7 @@ export class ChatService {
   private auth = inject(AuthService);
 
   selectedModel = signal<AiModel>('GROQ_LLAMA_70B');
+  selectedKnowledgeBaseId = signal<number | null>(null);
   pendingPrompt = signal<string | null>(null);
 
   constructor(private http: HttpClient) {}
@@ -129,6 +130,10 @@ export class ChatService {
           }
           if (attachment?.mimeType) {
             body['attachmentMimeType'] = attachment.mimeType;
+          }
+          const knowledgeBaseId = this.selectedKnowledgeBaseId();
+          if (knowledgeBaseId != null) {
+            body['knowledgeBaseId'] = knowledgeBaseId;
           }
 
           const response = await fetch(`${environment.apiUrl}/chat/stream`, {

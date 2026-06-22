@@ -59,3 +59,5 @@ export interface AgentRun {
   output: string;
   createdAt: string;
 }
+
+export * from './knowledge';

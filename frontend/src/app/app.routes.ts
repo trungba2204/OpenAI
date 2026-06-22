@@ -15,6 +15,20 @@ export const routes: Routes = [
   { path: 'workspaces/:id', loadComponent: () => import('./features/ide/workspace-detail/workspace-detail.component').then(m => m.WorkspaceDetailComponent), canActivate: [authGuard] },
   { path: 'projects/:id', loadComponent: () => import('./features/ide/project-editor/project-editor.component').then(m => m.ProjectEditorComponent), canActivate: [authGuard] },
   {
+    path: 'knowledge',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/knowledge/knowledge-layout/knowledge-layout.component').then(m => m.KnowledgeLayoutComponent),
+    children: [
+      { path: '', loadComponent: () => import('./features/knowledge/knowledge-list/knowledge-list.component').then(m => m.KnowledgeListComponent) },
+      { path: 'create', loadComponent: () => import('./features/knowledge/knowledge-create/knowledge-create.component').then(m => m.KnowledgeCreateComponent) },
+      { path: ':id', redirectTo: ':id/documents', pathMatch: 'full' },
+      { path: ':id/documents', loadComponent: () => import('./features/knowledge/knowledge-documents/knowledge-documents.component').then(m => m.KnowledgeDocumentsComponent) },
+      { path: ':id/chat', loadComponent: () => import('./features/knowledge/knowledge-chat/knowledge-chat.component').then(m => m.KnowledgeChatComponent) },
+      { path: ':id/settings', loadComponent: () => import('./features/knowledge/knowledge-settings/knowledge-settings.component').then(m => m.KnowledgeSettingsComponent) },
+      { path: ':id/analytics', loadComponent: () => import('./features/knowledge/knowledge-analytics/knowledge-analytics.component').then(m => m.KnowledgeAnalyticsComponent) },
+    ]
+  },
+  {
     path: 'admin/login',
     loadComponent: () => import('./features/admin/admin-login/admin-login.component').then(m => m.AdminLoginComponent),
     canActivate: [adminGuestGuard]

@@ -8,7 +8,8 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 import { ChatService } from '../../../core/services/chat.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { PromptService } from '../../../core/services/prompt.service';
-import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptTemplate } from '../../../core/models';
+import { KnowledgeBaseService } from '../../../core/services/knowledge-base.service';
+import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptTemplate, KnowledgeBase } from '../../../core/models';
 
 @Component({
   selector: 'app-chat-page',
@@ -30,6 +31,21 @@ import { AiModel, AiModelInfo, Conversation, Message, MessageAttachment, PromptT
               <option [value]="p.id">{{ p.title }}</option>
             }
           </select>
+
+          <select
+            class="chat-select"
+            [class.chat-select--active]="selectedKnowledgeBaseId() !== null"
+            [ngModel]="selectedKnowledgeBaseId()"
+            (ngModelChange)="onKnowledgeSelect($event)">
+            <option [ngValue]="null">🧠 Knowledge...</option>
+            @for (kb of knowledgeBases(); track kb.id) {
+              <option [ngValue]="kb.id">{{ kb.name }} ({{ kb.documentCount }} tài liệu)</option>
+            }
+          </select>
+
+          @if (selectedKnowledgeBaseId() !== null) {
+            <span class="chat-header__kb-badge">RAG bật</span>
+          }
         </header>
 
         <div class="chat-content">
@@ -65,6 +81,7 @@ export class ChatPageComponent implements OnInit {
   chatService = inject(ChatService);
   private documentService = inject(DocumentService);
   private promptService = inject(PromptService);
+  private knowledgeBaseService = inject(KnowledgeBaseService);
 
   private messageInput = viewChild(MessageInputComponent);
 
@@ -72,6 +89,8 @@ export class ChatPageComponent implements OnInit {
   messages = signal<Message[]>([]);
   models = signal<AiModelInfo[]>([]);
   prompts = signal<PromptTemplate[]>([]);
+  knowledgeBases = signal<KnowledgeBase[]>([]);
+  selectedKnowledgeBaseId = signal<number | null>(null);
   activeConversationId = signal<number | null>(null);
   streaming = signal(false);
   streamContent = signal('');
@@ -107,9 +126,14 @@ export class ChatPageComponent implements OnInit {
       error: () => this.models.set(this.chatService.getDefaultModels())
     });
     this.promptService.list().subscribe(p => this.prompts.set(p));
+    this.knowledgeBaseService.list().subscribe({
+      next: list => this.knowledgeBases.set(list),
+      error: () => this.knowledgeBases.set([])
+    });
     this.loadConversations();
     this.selectedModel = this.chatService.sanitizeModel(this.chatService.selectedModel());
     this.chatService.selectedModel.set(this.selectedModel);
+    this.selectedKnowledgeBaseId.set(this.chatService.selectedKnowledgeBaseId());
   }
 
   loadConversations(): void {
@@ -324,5 +348,10 @@ export class ChatPageComponent implements OnInit {
 
     this.messageInput()?.applyText(prompt.content);
     this.chatService.pendingPrompt.set(null);
+  }
+
+  onKnowledgeSelect(id: number | null): void {
+    this.selectedKnowledgeBaseId.set(id);
+    this.chatService.selectedKnowledgeBaseId.set(id);
   }
 }

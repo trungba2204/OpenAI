@@ -55,6 +55,10 @@ app:
     import:
       max-files: 20000
       max-total-mb: 500
+  knowledge:
+    chunk-size: 800
+    chunk-overlap: 120
+    top-k: 8
   cors:
     allowed-origins: http://localhost:4200
 

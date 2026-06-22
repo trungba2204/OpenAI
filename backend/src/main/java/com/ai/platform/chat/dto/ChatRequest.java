@@ -13,4 +13,5 @@ public class ChatRequest {
     private Long attachmentDocumentId;
     private String attachmentFilename;
     private String attachmentMimeType;
+    private Long knowledgeBaseId;
 }

@@ -2,7 +2,19 @@ import { Injectable, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
-export type AppMode = 'chat' | 'ide';
+export type AppMode = 'chat' | 'knowledge' | 'ide';
+
+const MODE_PATHS: Record<AppMode, string> = {
+  chat: '/chat',
+  knowledge: '/knowledge',
+  ide: '/workspaces'
+};
+
+const MODE_LABELS: Record<AppMode, string> = {
+  chat: '💬 Chat Mode',
+  knowledge: '🧠 Knowledge Mode',
+  ide: '💻 IDE Mode'
+};
 
 @Injectable({ providedIn: 'root' })
 export class AppModeService {
@@ -11,6 +23,7 @@ export class AppModeService {
   readonly mode = signal<AppMode>('chat');
   readonly transitioning = signal(false);
   readonly transitionLabel = signal('');
+  readonly transitionTarget = signal<AppMode>('chat');
 
   constructor() {
     this.syncFromUrl(this.router.url);
@@ -20,7 +33,16 @@ export class AppModeService {
   }
 
   isIdeRoute(url: string): boolean {
-    return url.startsWith('/workspaces') || url.startsWith('/projects');
+    const path = url.split('?')[0];
+    return path.startsWith('/workspaces') || path.startsWith('/projects');
+  }
+
+  isKnowledgeRoute(url: string): boolean {
+    return url.split('?')[0].startsWith('/knowledge');
+  }
+
+  isKnowledgeChatRoute(url: string): boolean {
+    return /^\/knowledge\/\d+\/chat/.test(url.split('?')[0]);
   }
 
   isPublicRoute(url: string): boolean {
@@ -33,7 +55,12 @@ export class AppModeService {
     const path = url.split('?')[0];
     if (this.isPublicRoute(path)) return false;
     if (path.startsWith('/projects/')) return false;
-    return path === '/chat' || path === '/workspaces' || path.startsWith('/workspaces/');
+    if (this.isKnowledgeChatRoute(path)) return false;
+    return path === '/chat'
+      || path.startsWith('/workspaces')
+      || path === '/knowledge'
+      || path === '/knowledge/create'
+      || /^\/knowledge\/\d+(\/(documents|settings|analytics)?)?$/.test(path);
   }
 
   switchTo(target: AppMode): void {
@@ -41,13 +68,12 @@ export class AppModeService {
     const current = this.mode();
     if (current === target) return;
 
-    this.transitionLabel.set(target === 'ide' ? '💻 IDE Mode' : '💬 Chat Mode');
+    this.transitionTarget.set(target);
+    this.transitionLabel.set(MODE_LABELS[target]);
     this.transitioning.set(true);
 
-    const path = target === 'ide' ? '/workspaces' : '/chat';
-
     window.setTimeout(() => {
-      this.router.navigateByUrl(path);
+      this.router.navigateByUrl(MODE_PATHS[target]);
     }, 420);
 
     window.setTimeout(() => {
@@ -58,6 +84,12 @@ export class AppModeService {
 
   private syncFromUrl(url: string): void {
     const path = url.split('?')[0];
-    this.mode.set(this.isIdeRoute(path) ? 'ide' : 'chat');
+    if (this.isIdeRoute(path)) {
+      this.mode.set('ide');
+    } else if (this.isKnowledgeRoute(path)) {
+      this.mode.set('knowledge');
+    } else {
+      this.mode.set('chat');
+    }
   }
 }
