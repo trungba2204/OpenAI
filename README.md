@@ -22,6 +22,8 @@ Nền tảng AI SaaS với Angular 20 + Spring Boot 3.4 + Spring AI 1.0.
 ai-platform/
 ├── frontend/     # Angular 20
 ├── backend/      # Spring Boot 3.4 + Spring AI 1.0
+├── plugin-sdk/   # Plugin SDK (TypeScript)
+├── vscode-extension/  # VS Code extension
 └── README.md
 ```
 
@@ -181,6 +183,86 @@ Restart backend để Flyway chạy `V13__knowledge_mvp.sql`.
 
 - Qdrant vector store + embedding API
 - Citations chi tiết (trang/số), Multi-KB search, Analytics
+
+## AI Editor Plugin Platform (MVP)
+
+Theo `AgentPlugin.md` — dùng AI Platform từ **VS Code** (và editor khác sau này) qua Plugin Gateway API, quản lý trên web trong **IDE mode**.
+
+### Plugin Hub (Web UI)
+
+| Route | Mô tả |
+|-------|-------|
+| `/plugins` | Tổng quan, hướng dẫn cài extension |
+| `/plugins/connect` | Tạo mã 6 ký tự (device login) |
+| `/plugins/sessions` | Phiên VS Code đang kết nối |
+| `/plugins/usage` | Thống kê request/token từ plugin |
+
+Vào từ **IDE mode** → Workspaces → nút **Plugin IDE** hoặc card *Code trên VS Code*.
+
+### Cài VS Code Extension
+
+```bash
+# Build SDK
+cd plugin-sdk && npm install && npm run build
+
+# Build extension
+cd ../vscode-extension && npm install && npm run build
+
+# Đóng gói .vsix (cần @vscode/vsce)
+npm run package
+```
+
+Cài trong VS Code: **Extensions** → `...` → **Install from VSIX** → chọn `ai-platform-vscode-0.1.0.vsix`.
+
+### Device login (khuyến nghị)
+
+1. Web: đăng nhập → **IDE** → **Plugin IDE** → **Kết nối** → copy mã 6 ký tự
+2. VS Code: Command Palette → **AI Platform: Connect with Device Code** → nhập mã
+3. Mở sidebar **AI Platform** → Chat
+
+### Cấu hình extension
+
+| Cài đặt | Mặc định |
+|---------|----------|
+| `aiPlatform.apiUrl` | `http://localhost:8080/api/plugin` |
+
+Hoặc biến môi trường khi dev: đặt trong VS Code Settings.
+
+### Lệnh VS Code
+
+| Lệnh | Chức năng |
+|------|-----------|
+| AI Platform: Connect with Device Code | Đăng nhập bằng mã từ web |
+| AI Platform: Open Chat | Mở panel chat |
+| AI Platform: Explain / Refactor / Fix / Generate Test | Context menu trên code đã chọn |
+| Inline completion | Tự động khi gõ (debounce 400ms) |
+
+### Plugin API (`/api/plugin/*`)
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| POST | `/api/plugin/auth/device` | Web tạo mã (JWT) |
+| POST | `/api/plugin/auth/device/poll` | Extension đổi mã lấy token |
+| POST | `/api/plugin/auth/login` | Login email/password |
+| POST | `/api/plugin/auth/refresh` | Refresh token |
+| POST | `/api/plugin/context` | Đăng ký context project |
+| POST | `/api/plugin/chat` | Chat với context editor |
+| POST | `/api/plugin/inline` | Explain, refactor, fix... |
+| POST | `/api/plugin/completion` | Code completion |
+| POST | `/api/plugin/agent` | Agent steps |
+| POST | `/api/plugin/knowledge-chat` | Chat RAG (knowledgeBaseId) |
+| GET | `/api/plugin/sessions` | Danh sách phiên |
+| GET | `/api/plugin/usage` | Thống kê usage |
+
+### Cấu trúc thêm
+
+```
+ai-platform/
+├── plugin-sdk/        # TypeScript SDK cho extension
+└── vscode-extension/  # VS Code extension MVP
+```
+
+Restart backend để Flyway chạy `V14__plugin_platform.sql`.
 
 ## API chính
 

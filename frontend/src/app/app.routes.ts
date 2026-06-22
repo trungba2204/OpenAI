@@ -15,6 +15,17 @@ export const routes: Routes = [
   { path: 'workspaces/:id', loadComponent: () => import('./features/ide/workspace-detail/workspace-detail.component').then(m => m.WorkspaceDetailComponent), canActivate: [authGuard] },
   { path: 'projects/:id', loadComponent: () => import('./features/ide/project-editor/project-editor.component').then(m => m.ProjectEditorComponent), canActivate: [authGuard] },
   {
+    path: 'plugins',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/plugin/plugin-layout/plugin-layout.component').then(m => m.PluginLayoutComponent),
+    children: [
+      { path: '', loadComponent: () => import('./features/plugin/plugin-hub/plugin-hub.component').then(m => m.PluginHubComponent) },
+      { path: 'connect', loadComponent: () => import('./features/plugin/plugin-connect/plugin-connect.component').then(m => m.PluginConnectComponent) },
+      { path: 'sessions', loadComponent: () => import('./features/plugin/plugin-sessions/plugin-sessions.component').then(m => m.PluginSessionsComponent) },
+      { path: 'usage', loadComponent: () => import('./features/plugin/plugin-usage/plugin-usage.component').then(m => m.PluginUsageComponent) },
+    ]
+  },
+  {
     path: 'knowledge',
     canActivate: [authGuard],
     loadComponent: () => import('./features/knowledge/knowledge-layout/knowledge-layout.component').then(m => m.KnowledgeLayoutComponent),

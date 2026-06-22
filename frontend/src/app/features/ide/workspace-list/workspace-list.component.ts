@@ -17,10 +17,21 @@ import { Workspace } from '../../../core/models/ide';
               <h1 class="feature-title">💻 AI IDE Workspace</h1>
               <p class="feature-desc">Quản lý project, chỉnh sửa code và chat với AI</p>
             </div>
-            <button type="button" class="feature-btn feature-btn--primary" (click)="showForm = !showForm">
-              + Workspace mới
-            </button>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+              <a routerLink="/plugins" class="feature-btn">Plugin IDE</a>
+              <button type="button" class="feature-btn feature-btn--primary" (click)="showForm = !showForm">
+                + Workspace mới
+              </button>
+            </div>
           </div>
+
+          <a class="plugin-promo-card" routerLink="/plugins">
+            <div>
+              <h3>Code trên VS Code</h3>
+              <p>Dùng chung AI backend — Chat, Inline AI, Agent</p>
+            </div>
+            <span class="plugin-promo-card__arrow">→</span>
+          </a>
 
           @if (showForm) {
             <div class="feature-form-card">

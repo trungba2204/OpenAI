@@ -1,0 +1,140 @@
+{
+  "name": "ai-platform-vscode",
+  "displayName": "AI Platform",
+  "description": "AI chat, inline edit, and completion for VS Code via AI Platform backend",
+  "version": "0.2.2",
+  "publisher": "ai-platform",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Machine Learning"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiPlatform.connect",
+        "title": "AI Platform: Connect with Device Code"
+      },
+      {
+        "command": "aiPlatform.logout",
+        "title": "AI Platform: Logout"
+      },
+      {
+        "command": "aiPlatform.explain",
+        "title": "AI Platform: Explain"
+      },
+      {
+        "command": "aiPlatform.refactor",
+        "title": "AI Platform: Refactor"
+      },
+      {
+        "command": "aiPlatform.fix",
+        "title": "AI Platform: Fix"
+      },
+      {
+        "command": "aiPlatform.generateTest",
+        "title": "AI Platform: Generate Test"
+      },
+      {
+        "command": "aiPlatform.chatFocus",
+        "title": "AI Platform: Open Chat"
+      },
+      {
+        "command": "aiPlatform.addToChat",
+        "title": "AI Platform: Add to Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "aiPlatform.attachFile",
+        "title": "AI Platform: Attach File to Chat"
+      },
+      {
+        "command": "aiPlatform.attachImage",
+        "title": "AI Platform: Attach Image to Chat"
+      },
+      {
+        "command": "aiPlatform.addFileToChat",
+        "title": "AI Platform: Add File to Chat"
+      }
+    ],
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "ai-platform",
+          "title": "AI Platform",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "ai-platform": [
+        {
+          "type": "webview",
+          "id": "aiPlatform.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "aiPlatform.addToChat",
+          "group": "aiPlatform@0",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "aiPlatform.explain",
+          "group": "aiPlatform@1"
+        },
+        {
+          "command": "aiPlatform.refactor",
+          "group": "aiPlatform@2"
+        },
+        {
+          "command": "aiPlatform.fix",
+          "group": "aiPlatform@3"
+        },
+        {
+          "command": "aiPlatform.generateTest",
+          "group": "aiPlatform@4"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "aiPlatform.addFileToChat",
+          "group": "aiPlatform@1",
+          "when": "!explorerResourceIsFolder"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI Platform",
+      "properties": {
+        "aiPlatform.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:8080/api/plugin",
+          "description": "AI Platform Plugin API base URL"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "prepare-sdk": "node scripts/prepare-sdk.js",
+    "vscode:prepublish": "npm run prepare-sdk && npm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npm run prepare-sdk && npm run build && vsce package --allow-missing-repository"
+  },
+  "dependencies": {
+    "@ai-platform/plugin-sdk": "file:./vendor/plugin-sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}

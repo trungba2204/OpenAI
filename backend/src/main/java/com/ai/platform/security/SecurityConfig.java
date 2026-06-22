@@ -49,6 +49,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/plugin/auth/login").permitAll()
+                        .requestMatchers("/api/plugin/auth/refresh").permitAll()
+                        .requestMatchers("/api/plugin/auth/device/poll").permitAll()
                         .requestMatchers("/api/admin/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

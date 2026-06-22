@@ -120,6 +120,11 @@ public class AuthService {
                 .orElseThrow(() -> new ApiException("User not found", HttpStatus.NOT_FOUND));
     }
 
+    @Transactional
+    public AuthResponse buildAuthResponseForUser(User user) {
+        return buildAuthResponse(user);
+    }
+
     private AuthResponse buildAuthResponse(User user) {
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())

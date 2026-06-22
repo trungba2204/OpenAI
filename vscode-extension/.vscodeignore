@@ -1,0 +1,10 @@
+.vscode/**
+.vscode-test/**
+src/**
+scripts/**
+.gitignore
+**/*.ts
+**/*.map
+vendor/**
+node_modules/**
+!node_modules/@ai-platform/**

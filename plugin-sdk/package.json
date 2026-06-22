@@ -1,0 +1,14 @@
+{
+  "name": "@ai-platform/plugin-sdk",
+  "version": "0.1.0",
+  "description": "AI Platform Plugin SDK for IDE extensions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

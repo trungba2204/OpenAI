@@ -34,7 +34,7 @@ export class AppModeService {
 
   isIdeRoute(url: string): boolean {
     const path = url.split('?')[0];
-    return path.startsWith('/workspaces') || path.startsWith('/projects');
+    return path.startsWith('/workspaces') || path.startsWith('/projects') || path.startsWith('/plugins');
   }
 
   isKnowledgeRoute(url: string): boolean {
@@ -58,6 +58,7 @@ export class AppModeService {
     if (this.isKnowledgeChatRoute(path)) return false;
     return path === '/chat'
       || path.startsWith('/workspaces')
+      || path.startsWith('/plugins')
       || path === '/knowledge'
       || path === '/knowledge/create'
       || /^\/knowledge\/\d+(\/(documents|settings|analytics)?)?$/.test(path);
