@@ -7,6 +7,7 @@ import com.ai.platform.auth.service.AuthService;
 import com.ai.platform.common.exception.ApiException;
 import com.ai.platform.plugin.dto.PluginDeviceCodeResponse;
 import com.ai.platform.plugin.entity.PluginDeviceCode;
+import com.ai.platform.plugin.entity.PluginEditorType;
 import com.ai.platform.plugin.repository.PluginDeviceCodeRepository;
 import com.ai.platform.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class PluginAuthService {
 
     private final AuthService authService;
     private final PluginDeviceCodeRepository deviceCodeRepository;
+    private final PluginInstallationService installationService;
     private final SecureRandom random = new SecureRandom();
 
     @Transactional
@@ -66,6 +68,8 @@ public class PluginAuthService {
 
         deviceCode.setConsumed(true);
         deviceCodeRepository.save(deviceCode);
+
+        installationService.record(deviceCode.getUser(), PluginEditorType.VSCODE, null);
 
         return authService.buildAuthResponseForUser(deviceCode.getUser());
     }

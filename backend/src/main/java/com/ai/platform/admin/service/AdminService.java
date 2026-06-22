@@ -9,6 +9,9 @@ import com.ai.platform.chat.repository.MessageRepository;
 import com.ai.platform.common.exception.ApiException;
 import com.ai.platform.usage.entity.AiUsage;
 import com.ai.platform.usage.repository.AiUsageRepository;
+import com.ai.platform.plugin.repository.PluginInstallationRepository;
+import com.ai.platform.plugin.repository.PluginSessionRepository;
+import com.ai.platform.plugin.repository.PluginUsageRepository;
 import com.ai.platform.user.entity.User;
 import com.ai.platform.user.entity.UserStatus;
 import com.ai.platform.user.repository.UserRepository;
@@ -36,6 +39,9 @@ public class AdminService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final AiUsageRepository aiUsageRepository;
+    private final PluginUsageRepository pluginUsageRepository;
+    private final PluginSessionRepository pluginSessionRepository;
+    private final PluginInstallationRepository pluginInstallationRepository;
     private final AuditLogService auditLogService;
 
     @Transactional(readOnly = true)
@@ -56,6 +62,11 @@ public class AdminService {
                 .totalTokens(aiUsageRepository.sumTotalTokens())
                 .totalCost(aiUsageRepository.sumTotalCost())
                 .activeUsersToday(activeToday)
+                .pluginInstallations(pluginInstallationRepository.count())
+                .pluginActiveSessions(pluginSessionRepository.countByLastSeenAtAfter(
+                        LocalDateTime.now().minusHours(24)))
+                .pluginRequests(pluginUsageRepository.count())
+                .pluginTokens(pluginUsageRepository.sumTotalTokens())
                 .build();
     }
 

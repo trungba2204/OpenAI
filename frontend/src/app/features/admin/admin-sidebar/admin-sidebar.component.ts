@@ -18,6 +18,7 @@ import { ThemeService } from '../../../core/services/theme.service';
         <a routerLink="/admin/models" routerLinkActive="active" class="admin-sidebar__link">🤖 Models</a>
         <a routerLink="/admin/tokens" routerLinkActive="active" class="admin-sidebar__link">🔢 Tokens</a>
         <a routerLink="/admin/costs" routerLinkActive="active" class="admin-sidebar__link">💰 Costs</a>
+        <a routerLink="/admin/plugins" routerLinkActive="active" class="admin-sidebar__link">🧩 VS Code Plugin</a>
       </nav>
 
       <div class="admin-sidebar__footer">

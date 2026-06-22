@@ -58,6 +58,7 @@ export const routes: Routes = [
       { path: 'models', loadComponent: () => import('./features/admin/admin-models/admin-models.component').then(m => m.AdminModelsComponent) },
       { path: 'tokens', loadComponent: () => import('./features/admin/admin-tokens/admin-tokens.component').then(m => m.AdminTokensComponent) },
       { path: 'costs', loadComponent: () => import('./features/admin/admin-costs/admin-costs.component').then(m => m.AdminCostsComponent) },
+      { path: 'plugins', loadComponent: () => import('./features/admin/admin-plugins/admin-plugins.component').then(m => m.AdminPluginsComponent) },
     ]
   },
   { path: '**', redirectTo: 'chat' }

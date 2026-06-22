@@ -20,9 +20,12 @@ import java.util.stream.Collectors;
 public class PluginSessionService {
 
     private final PluginSessionRepository sessionRepository;
+    private final PluginInstallationService installationService;
 
     @Transactional
-    public PluginSession touchSession(User user, PluginEditorType editorType, String projectName, String workspacePath) {
+    public PluginSession touchSession(User user, PluginEditorType editorType, String projectName,
+                                      String workspacePath, String extensionVersion) {
+        installationService.record(user, editorType, extensionVersion);
         String hash = hashPath(workspacePath);
         return sessionRepository.findByUserIdOrderByLastSeenAtDesc(user.getId()).stream()
                 .filter(s -> s.getEditorType() == editorType

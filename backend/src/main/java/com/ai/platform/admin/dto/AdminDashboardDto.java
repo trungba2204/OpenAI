@@ -18,4 +18,8 @@ public class AdminDashboardDto {
     private long totalTokens;
     private BigDecimal totalCost;
     private long activeUsersToday;
+    private long pluginInstallations;
+    private long pluginActiveSessions;
+    private long pluginRequests;
+    private long pluginTokens;
 }

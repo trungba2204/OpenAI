@@ -10,7 +10,12 @@ import {
   CostAnalytics,
   ModelStatistic,
   TokenAnalytics,
-  UsageFilters
+  UsageFilters,
+  AdminPluginDashboard,
+  AdminPluginUsage,
+  AdminPluginSession,
+  AdminPluginInstallation,
+  PluginUsageFilters
 } from '../models/admin';
 
 @Injectable({ providedIn: 'root' })
@@ -68,5 +73,27 @@ export class AdminService {
 
   getCostAnalytics(): Observable<CostAnalytics> {
     return this.http.get<CostAnalytics>(`${this.base}/analytics/cost`);
+  }
+
+  getPluginDashboard(): Observable<AdminPluginDashboard> {
+    return this.http.get<AdminPluginDashboard>(`${this.base}/plugins/dashboard`);
+  }
+
+  getPluginUsages(filters: PluginUsageFilters = {}): Observable<AdminPluginUsage[]> {
+    let params = new HttpParams();
+    if (filters.editorType) params = params.set('editorType', filters.editorType);
+    if (filters.userId) params = params.set('userId', filters.userId);
+    if (filters.endpoint) params = params.set('endpoint', filters.endpoint);
+    if (filters.from) params = params.set('from', filters.from);
+    if (filters.to) params = params.set('to', filters.to);
+    return this.http.get<AdminPluginUsage[]>(`${this.base}/plugins/usages`, { params });
+  }
+
+  getPluginSessions(): Observable<AdminPluginSession[]> {
+    return this.http.get<AdminPluginSession[]>(`${this.base}/plugins/sessions`);
+  }
+
+  getPluginInstallations(): Observable<AdminPluginInstallation[]> {
+    return this.http.get<AdminPluginInstallation[]>(`${this.base}/plugins/installations`);
   }
 }

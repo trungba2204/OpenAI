@@ -196,7 +196,8 @@ public class PluginAiService {
 
     private void touchContext(User user, PluginContextPayload context) {
         if (context == null) return;
-        sessionService.touchSession(user, editorType(context), context.getProjectName(), context.getProjectName());
+        sessionService.touchSession(user, editorType(context), context.getProjectName(),
+                context.getProjectName(), context.getExtensionVersion());
     }
 
     private PluginEditorType editorType(PluginContextPayload ctx) {

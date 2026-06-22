@@ -1,12 +1,13 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AdminService } from '../../../core/services/admin.service';
 import { AdminChartComponent } from '../shared/admin-chart/admin-chart.component';
 import { AdminDashboard, ModelStatistic } from '../../../core/models/admin';
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [DatePipe, DecimalPipe, AdminChartComponent],
+  imports: [DatePipe, DecimalPipe, RouterLink, AdminChartComponent],
   template: `
     <div class="admin-container">
       <div class="admin-header">
@@ -24,6 +25,12 @@ import { AdminDashboard, ModelStatistic } from '../../../core/models/admin';
           <div class="admin-stat-card"><p class="admin-stat-card__value">{{ d.totalTokens | number }}</p><p class="admin-stat-card__label">Total Tokens</p></div>
           <div class="admin-stat-card"><p class="admin-stat-card__value">{{ '$' }}{{ d.totalCost | number:'1.2-4' }}</p><p class="admin-stat-card__label">Total Cost</p></div>
           <div class="admin-stat-card"><p class="admin-stat-card__value">{{ d.activeUsersToday }}</p><p class="admin-stat-card__label">Active Today</p></div>
+          <div class="admin-stat-card"><p class="admin-stat-card__value">{{ d.pluginRequests }}</p><p class="admin-stat-card__label">Plugin Requests</p></div>
+          <div class="admin-stat-card"><p class="admin-stat-card__value">{{ d.pluginActiveSessions }}</p><p class="admin-stat-card__label">Plugin Sessions (24h)</p></div>
+        </div>
+
+        <div class="admin-header" style="margin-top:1rem">
+          <a routerLink="/admin/plugins" class="feature-btn">Quản lý VS Code Plugin →</a>
         </div>
 
         <div class="admin-charts">
