@@ -6,6 +6,7 @@ import com.ai.platform.auth.dto.RefreshTokenRequest;
 import com.ai.platform.auth.service.AuthService;
 import com.ai.platform.common.exception.ApiException;
 import com.ai.platform.plugin.dto.PluginDeviceCodeResponse;
+import com.ai.platform.plugin.dto.PluginDeviceCodeStatusDto;
 import com.ai.platform.plugin.entity.PluginDeviceCode;
 import com.ai.platform.plugin.entity.PluginEditorType;
 import com.ai.platform.plugin.repository.PluginDeviceCodeRepository;
@@ -30,6 +31,7 @@ public class PluginAuthService {
     private final AuthService authService;
     private final PluginDeviceCodeRepository deviceCodeRepository;
     private final PluginInstallationService installationService;
+    private final PluginSessionService sessionService;
     private final SecureRandom random = new SecureRandom();
 
     @Transactional
@@ -70,8 +72,32 @@ public class PluginAuthService {
         deviceCodeRepository.save(deviceCode);
 
         installationService.record(deviceCode.getUser(), PluginEditorType.VSCODE, null);
+        sessionService.touchSession(deviceCode.getUser(), PluginEditorType.VSCODE, null, null, null);
 
         return authService.buildAuthResponseForUser(deviceCode.getUser());
+    }
+
+    @Transactional(readOnly = true)
+    public PluginDeviceCodeStatusDto getDeviceCodeStatus(User user, String code) {
+        if (code == null || code.isBlank()) {
+            throw new ApiException("Code required", HttpStatus.BAD_REQUEST);
+        }
+        PluginDeviceCode deviceCode = deviceCodeRepository.findByCode(code.toUpperCase(Locale.ROOT))
+                .orElseThrow(() -> new ApiException("Invalid code", HttpStatus.NOT_FOUND));
+
+        if (!deviceCode.getUser().getId().equals(user.getId())) {
+            throw new ApiException("Forbidden", HttpStatus.FORBIDDEN);
+        }
+
+        String status;
+        if (deviceCode.isConsumed()) {
+            status = "CONNECTED";
+        } else if (deviceCode.getExpiresAt().isBefore(LocalDateTime.now())) {
+            status = "EXPIRED";
+        } else {
+            status = "PENDING";
+        }
+        return PluginDeviceCodeStatusDto.builder().status(status).build();
     }
 
     public AuthResponse login(LoginRequest request) {

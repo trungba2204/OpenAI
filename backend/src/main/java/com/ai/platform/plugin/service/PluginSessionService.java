@@ -1,5 +1,6 @@
 package com.ai.platform.plugin.service;
 
+import com.ai.platform.plugin.dto.PluginConnectionStatusDto;
 import com.ai.platform.plugin.dto.PluginSessionDto;
 import com.ai.platform.plugin.entity.PluginEditorType;
 import com.ai.platform.plugin.entity.PluginSession;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -48,6 +50,21 @@ public class PluginSessionService {
         return sessionRepository.findByUserIdOrderByLastSeenAtDesc(user.getId()).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PluginConnectionStatusDto getConnectionStatus(User user) {
+        LocalDateTime since = LocalDateTime.now().minusMinutes(15);
+        return sessionRepository.findByUserIdOrderByLastSeenAtDesc(user.getId()).stream()
+                .filter(s -> s.getLastSeenAt() != null && s.getLastSeenAt().isAfter(since))
+                .findFirst()
+                .map(s -> PluginConnectionStatusDto.builder()
+                        .connected(true)
+                        .editorType(s.getEditorType().name())
+                        .projectName(s.getProjectName())
+                        .lastSeenAt(s.getLastSeenAt())
+                        .build())
+                .orElseGet(() -> PluginConnectionStatusDto.builder().connected(false).build());
     }
 
     private PluginSessionDto toDto(PluginSession s) {

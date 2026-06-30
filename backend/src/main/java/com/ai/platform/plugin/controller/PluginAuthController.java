@@ -5,6 +5,7 @@ import com.ai.platform.auth.dto.LoginRequest;
 import com.ai.platform.auth.dto.RefreshTokenRequest;
 import com.ai.platform.auth.service.AuthService;
 import com.ai.platform.plugin.dto.PluginDeviceCodeResponse;
+import com.ai.platform.plugin.dto.PluginDeviceCodeStatusDto;
 import com.ai.platform.plugin.service.PluginAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,14 @@ public class PluginAuthController {
             @AuthenticationPrincipal UserDetails userDetails) {
         var user = authService.getUserEntity(userDetails.getUsername());
         return ResponseEntity.ok(pluginAuthService.createDeviceCode(user));
+    }
+
+    @GetMapping("/device/status")
+    public ResponseEntity<PluginDeviceCodeStatusDto> deviceCodeStatus(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam String code) {
+        var user = authService.getUserEntity(userDetails.getUsername());
+        return ResponseEntity.ok(pluginAuthService.getDeviceCodeStatus(user, code));
     }
 
     @PostMapping("/device/poll")

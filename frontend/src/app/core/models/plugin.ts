@@ -3,6 +3,19 @@ export interface PluginDeviceCode {
   expiresAt: string;
 }
 
+export type PluginDeviceCodeStatus = 'PENDING' | 'CONNECTED' | 'EXPIRED';
+
+export interface PluginDeviceCodeStatusResponse {
+  status: PluginDeviceCodeStatus;
+}
+
+export interface PluginConnectionStatus {
+  connected: boolean;
+  editorType?: string;
+  projectName?: string;
+  lastSeenAt?: string;
+}
+
 export interface PluginSession {
   id: number;
   editorType: string;

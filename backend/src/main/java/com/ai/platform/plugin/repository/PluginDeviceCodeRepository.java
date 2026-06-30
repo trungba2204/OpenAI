@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface PluginDeviceCodeRepository extends JpaRepository<PluginDeviceCode, Long> {
 
     Optional<PluginDeviceCode> findByCodeAndConsumedFalse(String code);
+
+    Optional<PluginDeviceCode> findByCode(String code);
 }

@@ -122,6 +122,13 @@ public class PluginGatewayController {
         return ResponseEntity.ok(pluginAiService.usageSummary(user));
     }
 
+    @GetMapping("/connection")
+    public ResponseEntity<PluginConnectionStatusDto> connection(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        var user = authService.getUserEntity(userDetails.getUsername());
+        return ResponseEntity.ok(sessionService.getConnectionStatus(user));
+    }
+
     @GetMapping("/sessions")
     public ResponseEntity<List<PluginSessionDto>> sessions(
             @AuthenticationPrincipal UserDetails userDetails) {

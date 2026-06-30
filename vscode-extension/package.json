@@ -2,7 +2,7 @@
   "name": "ai-platform-vscode",
   "displayName": "AI Platform",
   "description": "AI chat, inline edit, and completion for VS Code via AI Platform backend",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "ai-platform",
   "engines": {
     "vscode": "^1.85.0"
