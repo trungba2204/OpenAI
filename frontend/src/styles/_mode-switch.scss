@@ -1,10 +1,7 @@
 .app-mode-switch {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 1200;
+  position: relative;
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   padding: 0.25rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg-card, #1a1a2e) 88%, transparent);
@@ -14,6 +11,10 @@
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
   backdrop-filter: blur(12px);
   overflow: hidden;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-user-drag: none;
 
   &__glow {
     position: absolute;
@@ -35,7 +36,7 @@
       box-shadow: 0 0 20px rgba(16, 185, 129, 0.45);
     }
 
-    &--ide {
+    &--plugin {
       transform: translate(calc(200% + 0.5rem), -50%);
       background: linear-gradient(135deg, #06b6d4, #8b5cf6);
       box-shadow: 0 0 20px rgba(139, 92, 246, 0.45);
@@ -45,10 +46,13 @@
   &__btn {
     position: relative;
     z-index: 1;
+    flex: 1 1 0;
+    min-width: 5.25rem;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.35rem;
-    padding: 0.45rem 0.9rem;
+    padding: 0.45rem 0.75rem;
     border: none;
     border-radius: 999px;
     background: transparent;
@@ -57,12 +61,13 @@
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
-    transition: color 0.25s ease, transform 0.2s ease;
+    transition: color 0.25s ease;
     white-space: nowrap;
+    touch-action: manipulation;
+    -webkit-user-drag: none;
 
     &:hover:not(:disabled) {
       color: var(--text-primary);
-      transform: scale(1.02);
     }
 
     &:disabled {
@@ -174,11 +179,41 @@
     }
   }
 
-  &--ide {
+  &--plugin {
     .mode-transition__flash {
       background: radial-gradient(circle at 85% 12%, rgba(139, 92, 246, 0.55), transparent 45%),
         radial-gradient(circle at 15% 88%, rgba(6, 182, 212, 0.45), transparent 40%);
     }
+
+    .mode-transition__ring {
+      border-top-color: #a78bfa;
+      border-right-color: #22d3ee;
+    }
+
+    .mode-transition__ring--delay {
+      border-top-color: #c4b5fd;
+      border-left-color: #67e8f9;
+    }
+
+    .mode-transition__particle {
+      background: linear-gradient(135deg, #c4b5fd, #67e8f9);
+    }
+  }
+}
+
+.plugin-mode-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  overflow: hidden;
+
+  .feature-main--scroll {
+    padding-top: 0.5rem;
+  }
+
+  .feature-header {
+    padding-right: 21rem;
   }
 }
 
@@ -194,7 +229,7 @@
   }
 
   .feature-header {
-    padding-right: 17rem;
+    padding-right: 21rem;
   }
 }
 
@@ -359,21 +394,5 @@
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) rotate(calc(var(--i) * 30deg)) translateY(-min(40vh, 280px)) scale(0);
-  }
-}
-
-.ide-mode-page {
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--bg-main);
-  color: var(--text-primary);
-  overflow: hidden;
-
-  .feature-main--scroll {
-    padding-top: 0.5rem;
-  }
-
-  .feature-header {
-    padding-right: 17rem;
   }
 }

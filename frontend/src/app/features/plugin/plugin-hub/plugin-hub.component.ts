@@ -6,10 +6,9 @@ import { RouterLink } from '@angular/router';
   imports: [RouterLink],
   template: `
     <div class="feature-container">
-      <a routerLink="/workspaces" class="admin-link">← Workspaces</a>
       <div class="feature-header">
         <div>
-          <h1 class="feature-title">Plugin IDE</h1>
+          <h1 class="feature-title">VS Code Plugin</h1>
           <p class="feature-desc">Dùng AI Platform trên VS Code, IntelliJ và các editor khác</p>
         </div>
         <a routerLink="/plugins/connect" class="feature-btn feature-btn--primary">Kết nối extension</a>

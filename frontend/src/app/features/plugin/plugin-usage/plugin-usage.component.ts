@@ -11,7 +11,7 @@ import { PluginUsageSummary } from '../../../core/models/plugin';
     <div class="feature-container">
       <a routerLink="/plugins" class="admin-link">← Plugin Hub</a>
       <h1 class="feature-title">Plugin Usage</h1>
-      <p class="feature-desc">Thống kê request và token từ plugin IDE</p>
+      <p class="feature-desc">Thống kê request và token từ VS Code extension</p>
 
       @if (loading()) {
         <p class="feature-empty">Đang tải...</p>
@@ -23,7 +23,7 @@ import { PluginUsageSummary } from '../../../core/models/plugin';
           </div>
           <div class="plugin-stat-card">
             <span class="plugin-stat-card__value">{{ usage()!.totalTokens | number }}</span>
-            <span class="plugin-stat-card__label">Tổng token (ước tính)</span>
+            <span class="plugin-stat-card__label">Tổng token</span>
           </div>
         </div>
       }

@@ -51,10 +51,6 @@ app:
     refresh-token-expiration-ms: 604800000
   upload:
     dir: ${UPLOAD_DIR:uploads}
-  ide:
-    import:
-      max-files: 20000
-      max-total-mb: 500
   knowledge:
     chunk-size: 800
     chunk-overlap: 120

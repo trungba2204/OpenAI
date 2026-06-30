@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   selector: 'app-plugin-layout',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <div class="ide-mode-page">
+    <div class="plugin-mode-page">
       <main class="feature-main feature-main--scroll">
         <nav class="plugin-nav">
           <a routerLink="/plugins" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Tổng quan</a>

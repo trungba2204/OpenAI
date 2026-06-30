@@ -279,10 +279,10 @@ app-message-list {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  padding-right: 17rem;
+  padding-right: 21rem;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .chat-select {

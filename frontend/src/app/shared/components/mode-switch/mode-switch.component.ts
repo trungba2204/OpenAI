@@ -5,6 +5,16 @@ import { AppMode, AppModeService } from '../../../core/services/app-mode.service
 
 @Component({
   selector: 'app-mode-switch',
+  styles: [`
+    :host {
+      display: block;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1200;
+      pointer-events: none;
+    }
+  `],
   template: `
     @if (visible) {
       <div class="app-mode-switch" role="group" aria-label="Chuyển chế độ ứng dụng">
@@ -29,16 +39,16 @@ import { AppMode, AppModeService } from '../../../core/services/app-mode.service
         <button
           type="button"
           class="app-mode-switch__btn"
-          [class.app-mode-switch__btn--active]="modeService.mode() === 'ide'"
+          [class.app-mode-switch__btn--active]="modeService.mode() === 'plugin'"
           [disabled]="modeService.transitioning()"
-          (click)="select('ide')">
-          <span class="app-mode-switch__icon">💻</span>
-          <span>IDE</span>
+          (click)="select('plugin')">
+          <span class="app-mode-switch__icon">🧩</span>
+          <span>Plugin</span>
         </button>
         <span
           class="app-mode-switch__glow"
           [class.app-mode-switch__glow--knowledge]="modeService.mode() === 'knowledge'"
-          [class.app-mode-switch__glow--ide]="modeService.mode() === 'ide'"></span>
+          [class.app-mode-switch__glow--plugin]="modeService.mode() === 'plugin'"></span>
       </div>
     }
 
@@ -47,7 +57,7 @@ import { AppMode, AppModeService } from '../../../core/services/app-mode.service
         class="mode-transition"
         [class.mode-transition--chat]="modeService.transitionTarget() === 'chat'"
         [class.mode-transition--knowledge]="modeService.transitionTarget() === 'knowledge'"
-        [class.mode-transition--ide]="modeService.transitionTarget() === 'ide'"
+        [class.mode-transition--plugin]="modeService.transitionTarget() === 'plugin'"
         aria-hidden="true">
         <div class="mode-transition__ring"></div>
         <div class="mode-transition__ring mode-transition__ring--delay"></div>

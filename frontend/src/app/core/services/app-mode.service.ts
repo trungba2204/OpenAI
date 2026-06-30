@@ -2,18 +2,18 @@ import { Injectable, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
-export type AppMode = 'chat' | 'knowledge' | 'ide';
+export type AppMode = 'chat' | 'knowledge' | 'plugin';
 
 const MODE_PATHS: Record<AppMode, string> = {
   chat: '/chat',
   knowledge: '/knowledge',
-  ide: '/workspaces'
+  plugin: '/plugins'
 };
 
 const MODE_LABELS: Record<AppMode, string> = {
   chat: '💬 Chat Mode',
   knowledge: '🧠 Knowledge Mode',
-  ide: '💻 IDE Mode'
+  plugin: '🧩 Plugin Mode'
 };
 
 @Injectable({ providedIn: 'root' })
@@ -32,9 +32,8 @@ export class AppModeService {
     });
   }
 
-  isIdeRoute(url: string): boolean {
-    const path = url.split('?')[0];
-    return path.startsWith('/workspaces') || path.startsWith('/projects') || path.startsWith('/plugins');
+  isPluginRoute(url: string): boolean {
+    return url.split('?')[0].startsWith('/plugins');
   }
 
   isKnowledgeRoute(url: string): boolean {
@@ -54,10 +53,8 @@ export class AppModeService {
   showModeSwitch(url = this.router.url): boolean {
     const path = url.split('?')[0];
     if (this.isPublicRoute(path)) return false;
-    if (path.startsWith('/projects/')) return false;
     if (this.isKnowledgeChatRoute(path)) return false;
     return path === '/chat'
-      || path.startsWith('/workspaces')
       || path.startsWith('/plugins')
       || path === '/knowledge'
       || path === '/knowledge/create'
@@ -85,8 +82,8 @@ export class AppModeService {
 
   private syncFromUrl(url: string): void {
     const path = url.split('?')[0];
-    if (this.isIdeRoute(path)) {
-      this.mode.set('ide');
+    if (this.isPluginRoute(path)) {
+      this.mode.set('plugin');
     } else if (this.isKnowledgeRoute(path)) {
       this.mode.set('knowledge');
     } else {

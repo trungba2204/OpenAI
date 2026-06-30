@@ -12,7 +12,7 @@ Nền tảng AI SaaS với Angular 20 + Spring Boot 3.4 + Spring AI 1.0.
 - Agent Mode với tool calling
 - Markdown Generator
 - PPT Generator
-- **AI IDE Workspace** (Monaco Editor, upload ZIP, AI chat theo code)
+- **VS Code Plugin** (device login, chat/inline/completion qua extension)
 - **AI Knowledge Training** (upload tài liệu, huấn luyện RAG, chat theo bộ kiến thức)
 - **Admin Portal** (Dashboard, Users, AI Usage, Conversations, Analytics) — chỉ `ROLE_ADMIN`
 
@@ -114,34 +114,13 @@ npm start
 
 Frontend chạy tại `http://localhost:4200`
 
-## AI IDE Workspace (Phase 1)
-
-Theo `AgentIDE.md` — MVP gồm:
-
-| Tính năng | Route |
-|-----------|-------|
-| Danh sách workspace | `/workspaces` |
-| Quản lý project (upload ZIP) | `/workspaces/:id` |
-| Monaco Editor + AI Chat | `/projects/:id` |
-
-**Luồng sử dụng:**
-
-1. Sidebar → **AI IDE** → tạo workspace
-2. Upload file `.zip` source code hoặc tạo project trống
-3. Mở project → chọn file cây thư mục → chỉnh sửa trong Monaco
-4. Panel **AI Assistant** bên phải — hỏi về code (có context file đang mở)
-
-**API chính:** `/api/workspaces`, `/api/projects/upload`, `/api/projects/{id}/tree`, `/api/files/{id}`, `/api/ai/chat`
-
-> Restart backend để Flyway chạy migration `V11__ide_workspace.sql`.
-
 ## AI Knowledge Training (MVP Phase 1)
 
 Theo `AgentKnowledge.md` — huấn luyện AI từ tài liệu riêng và chat RAG.
 
 ### Chế độ ứng dụng
 
-Nút **Chat | Knowledge | IDE** góc trên phải (có animation chuyển mode). Knowledge hiển thị trên `/knowledge`, `/knowledge/create` và các trang quản lý; ẩn khi vào chat fullscreen `/knowledge/:id/chat`.
+Nút **Chat | Knowledge | Plugin** góc trên phải (có animation chuyển mode). Knowledge hiển thị trên `/knowledge`, `/knowledge/create` và các trang quản lý; ẩn khi vào chat fullscreen `/knowledge/:id/chat`. Plugin mode tại `/plugins` và các trang con.
 
 ### Routes
 
@@ -186,7 +165,7 @@ Restart backend để Flyway chạy `V13__knowledge_mvp.sql`.
 
 ## AI Editor Plugin Platform (MVP)
 
-Theo `AgentPlugin.md` — dùng AI Platform từ **VS Code** (và editor khác sau này) qua Plugin Gateway API, quản lý trên web trong **IDE mode**.
+Theo `AgentPlugin.md` — dùng AI Platform từ **VS Code** (và editor khác sau này) qua Plugin Gateway API.
 
 ### Plugin Hub (Web UI)
 
@@ -197,7 +176,7 @@ Theo `AgentPlugin.md` — dùng AI Platform từ **VS Code** (và editor khác s
 | `/plugins/sessions` | Phiên VS Code đang kết nối |
 | `/plugins/usage` | Thống kê request/token từ plugin |
 
-Vào từ **IDE mode** → Workspaces → nút **Plugin IDE** hoặc card *Code trên VS Code*.
+Vào từ **Plugin** mode (nút góc trên phải) hoặc truy cập trực tiếp `/plugins`.
 
 ### Cài VS Code Extension
 
@@ -216,7 +195,7 @@ Cài trong VS Code: **Extensions** → `...` → **Install from VSIX** → chọ
 
 ### Device login (khuyến nghị)
 
-1. Web: đăng nhập → **IDE** → **Plugin IDE** → **Kết nối** → copy mã 6 ký tự
+1. Web: đăng nhập → **Plugin** mode → **Kết nối** → copy mã 6 ký tự
 2. VS Code: Command Palette → **AI Platform: Connect with Device Code** → nhập mã
 3. Mở sidebar **AI Platform** → Chat
 
